@@ -57,8 +57,7 @@ output = {
     "shift_suggestions": shifts,
     "metadata": {
         "delivery_day": True,  # Example metadata
-        "peak_hours": ["14:00", "15:00", "16:00"]  # Example peak hours
     }
 }
 
-output
+print(output)
