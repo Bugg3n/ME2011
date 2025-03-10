@@ -1,7 +1,8 @@
 
 
 #Using queueing theory to model the number of customers in a store over time and returning the demanded number of employees per hour
-
+#hyperparameters
+sales_capacity = 12
 
 customer_flow_per_hour = [5, 8, 12, 20, 25, 30, 35, 40, 38, 32, 25, 20, 15, 10]
 
@@ -14,7 +15,7 @@ def calculate_staffing(customer_flow, sales_capacity):
 
 def main():
 
-    staffing = calculate_staffing(customer_flow_per_hour, 12)
+    staffing = calculate_staffing(customer_flow_per_hour, sales_capacity)
   
     return staffing
 
@@ -22,5 +23,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
