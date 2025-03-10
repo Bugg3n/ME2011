@@ -5,7 +5,7 @@ employees = [
     Employee(name="Alice", employment_rate=1.0, late_preference=2, early_preference=8, spread=5, unavailable_dates=["2025-03-15", "2025-03-22"]),
     Employee(name="Bob", employment_rate=0.8, late_preference=8, early_preference=2, spread=4, unavailable_dates=[date(2025, 3, 17)]),
 ]
-
+# jdfkjdfkjsdf
 
 for emp in employees:
     print(emp)
