@@ -1,7 +1,15 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from Model_1 import model1
+
+
+
 # Adapted Python script for Model 2 - Structured Output for Model 3
 
 # Input: Customer flow per hour and opening hours
-customer_flow_per_hour = [5, 8, 12, 20, 25, 30, 35, 40, 38, 32, 25, 20, 15, 10]
+#customer_flow_per_hour = [5, 8, 12, 20, 25, 30, 35, 40, 38, 32, 25, 20, 15, 10]
 opening_hours = ["08:00", "21:00"]
 sales_capacity_per_hour = 12  # A salesperson can handle 12 customers per hour
 min_shift_hours = 3
@@ -10,9 +18,6 @@ max_hours_per_day = 8
 store_id = "1"
 day = "2025-01-22"
 
-# Function to calculate staffing per hour
-def calculate_staffing(customer_flow, sales_capacity):
-    return [round(customers / sales_capacity) for customers in customer_flow]
 
 # Function to create shifts
 def create_shifts(staffing, min_hours, max_hours):
@@ -43,7 +48,8 @@ def create_shifts(staffing, min_hours, max_hours):
     return shifts
 
 # Run the model logic
-staffing_per_hour = calculate_staffing(customer_flow_per_hour, sales_capacity_per_hour)
+#staffing_per_hour = calculate_staffing(customer_flow_per_hour, sales_capacity_per_hour)
+staffing_per_hour = model1.main()
 shifts = create_shifts(staffing_per_hour, min_shift_hours, max_hours_without_lunch)
 
 # Create the structured output for Model 3
