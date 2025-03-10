@@ -10,7 +10,7 @@ employees = [
 for emp in employees:
     print(emp)
 
-shift_date = "2025-03-15"  # A date Alice is unavailable
+shift_date = "2025-03-15" # Alice should be unavailable
 shift_start = "09:00"
 shift_end = "17:00"
 
