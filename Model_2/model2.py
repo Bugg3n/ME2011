@@ -231,7 +231,10 @@ def create_output(opening_hours, staffing_per_hour, shifts, store_id, day):
     return output
 
 
-def main(opening_hours, sales_capacity_per_hour = 12, min_shift_hours=3, max_hours_without_lunch=5, max_hours_per_day=8, store_id, day,lunch_duration = 1):
+def main(opening_hours, store_id, day, 
+         sales_capacity_per_hour=12, min_shift_hours=3, 
+         max_hours_without_lunch=5, max_hours_per_day=8, 
+         lunch_duration=1):
 
     #uses queueing theory to model the number of customers in a store over time and returning the demanded number of employees per hour
     staffing_per_hour = model1.main(store_id,day)
@@ -243,4 +246,5 @@ def main(opening_hours, sales_capacity_per_hour = 12, min_shift_hours=3, max_hou
     #return create_output(opening_hours, staffing_per_hour, shifts, store_id, day)
 
 if __name__ == "__main__":  
-    main(opening_hours, sales_capacity_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day, store_id, day,luncg_duration = 1)
+    main(opening_hours, store_id, day, sales_capacity_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day, lunch_duration)
+  
