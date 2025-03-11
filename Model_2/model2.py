@@ -17,6 +17,7 @@ opening_hours = ["08:00", "22:00"]
 sales_capacity_per_hour = 12  # A salesperson can handle 12 customers per hour
 min_shift_hours = 3
 max_hours_without_lunch = 5
+lunch_duration = 1 #in hours
 max_hours_per_day = 8
 store_id = "1"
 day = "2025-01-22"
@@ -75,14 +76,17 @@ def create_shifts(opening_hours,required_staffing, min_hours_per_day, max_hours_
         for i in range(len(required_staffing)):
             start_time = i +8
 
+            
+
             #Check if the required staffing is met for the hour of interest
-            if current_staffing[i] < required_staffing[i]:
+            if current_staffing[i] < required_staffing[i] :
+               
                 #if the required staffing is higher than the previous hour and the shift has not started it is started
                 if shift_start == False:
                     shift_start = True
                     
                     current_staffing[i] += 1
-                    shifts.append([start_time,1])    #the format is [start_time, current duration]
+                    shifts.append([start_time,1,2])    #the format is [start_time, current duration, hours before lunch]
 
                 
                 #if the required staffing is higher than the previous hour and the shift has started we extend it
@@ -90,6 +94,7 @@ def create_shifts(opening_hours,required_staffing, min_hours_per_day, max_hours_
                     if shifts[k][1] < max_hours_per_day:
                         shifts[k][1] += 1
                         current_staffing[i] += 1
+                        
                     elif shifts[k][1] == max_hours_per_day and shift_end == False:
                         
                        
@@ -99,11 +104,13 @@ def create_shifts(opening_hours,required_staffing, min_hours_per_day, max_hours_
             
             #if the required staffing is the same as the previous hour and the shift has started
             elif required_staffing[i] == required_staffing[i-1] and shift_start == True:
-                
+              
                 #we can extend a shift if the max hours per day is not reached
                 if shifts[k][1] < max_hours_per_day:
                     shifts[k][1] += 1
                     current_staffing[i] += 1
+                    
+                    
 
                 #or we can end the shift if the max hours per day is reached
                 elif shifts[k][1] == max_hours_per_day and shift_end == False:       
@@ -113,7 +120,9 @@ def create_shifts(opening_hours,required_staffing, min_hours_per_day, max_hours_
 
             #if the opening hours are over and the shift has started and needs to be ended
             if i == len(required_staffing)-1 and shift_end == False:
+                
                 finished_shifts.append(shifts[k])
+                
                 
         k += 1
 
@@ -128,6 +137,8 @@ def create_shifts(opening_hours,required_staffing, min_hours_per_day, max_hours_
     
     #A function that removes the lunch break and adds it to the shift, and that cleans the schedule from the back
     cleaned_shifts = clean_shifts(opening_hours,finished_shifts)
+    print(current_staffing)
+    input(required_staffing)
     return cleaned_shifts
 
 
@@ -139,15 +150,13 @@ def clean_shifts(opening_hours ,shifts):
 
     
     closing_hour = opening_hours[1].split(":")[0]
-
     if shifts[-2][1] > shifts[-1][1]:
         difference = shifts[-2][1] - shifts[-1][1]
         half_difference = difference // 2  # Floor division to ensure an integer
         remainder = difference % 2  # Get remainder if difference is odd
 
         shifts[-2][1] -= half_difference + remainder  # Ensure no rounding errors
-        shifts[-1][1] += half_difference
-
+        shifts[-1][1] += half_difference 
 
 
 
@@ -156,7 +165,7 @@ def clean_shifts(opening_hours ,shifts):
 
 
     for shift in shifts:
-        cleaned_shifts.append({"start": f"{shift[0]}:00", "end": f"{shift[0]+shift[1]}:00", "lunch": "TBD"})
+        cleaned_shifts.append({"start": f"{shift[0]}:00", "end": f"{shift[0]+shift[1]}:00", "lunch": f"{shift[0]+shift[2]}:00"})
     return cleaned_shifts
 
 
@@ -222,15 +231,16 @@ def create_output(opening_hours, staffing_per_hour, shifts, store_id, day):
     return output
 
 
-def main(opening_hours, sales_capacity_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day, store_id, day):
+def main(opening_hours, sales_capacity_per_hour = 12, min_shift_hours=3, max_hours_without_lunch=5, max_hours_per_day=8, store_id, day,lunch_duration = 1):
 
     #uses queueing theory to model the number of customers in a store over time and returning the demanded number of employees per hour
     staffing_per_hour = model1.main(store_id,day)
 
     shifts = create_shifts(opening_hours,staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day)
     visualize_schedule(shifts)
+    print(shifts)
     
     #return create_output(opening_hours, staffing_per_hour, shifts, store_id, day)
 
 if __name__ == "__main__":  
-    main(opening_hours, sales_capacity_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day, store_id, day)
+    main(opening_hours, sales_capacity_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day, store_id, day,luncg_duration = 1)
