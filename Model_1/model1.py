@@ -13,7 +13,7 @@ def calculate_staffing(customer_flow, sales_capacity):
 
 
 
-def main():
+def main(store_id, day):
 
     staffing = calculate_staffing(customer_flow_per_hour, sales_capacity)
   
@@ -22,5 +22,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(store_id="1", day="2025-01-22")
 
