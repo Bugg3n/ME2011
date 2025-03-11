@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from Model_1 import model1
 
-
+# This model is supposed to take the customer flow from model 1 and create a shift suggestion for one specific day.
 
 # Adapted Python script for Model 2 - Structured Output for Model 3
 

@@ -1,5 +1,6 @@
 from datetime import datetime, date
 
+# Class for the employees.
 
 class Employee:
     _id_counter = 1
@@ -52,19 +53,31 @@ class Employee:
         :param shift_end: End time in 'HH:MM' format.
         :return: True if available, False if unavailable.
         """
-        # TODO: Should probably also check if person already has a shift on this day.
         if isinstance(shift_date, str):
             shift_date = date.fromisoformat(shift_date)
 
+        # Check if employee is unavailable on that specific date
         if shift_date in self.unavailable_dates:
-            return False  # Employee is unavailable on this specific date
+            return False  
 
         shift_start_time = datetime.strptime(shift_start, "%H:%M")
         shift_end_time = datetime.strptime(shift_end, "%H:%M")
-        shift_hours = (shift_end_time - shift_start_time).seconds // 3600  # Convert to hours
+        shift_hours = (shift_end_time - shift_start_time).seconds // 3600  
 
+        # Check if employee already has a shift on that day
+        for shift in self.schedule:
+            existing_shift_date = date.fromisoformat(shift["date"])
+            existing_start = datetime.strptime(shift["start"], "%H:%M")
+            existing_end = datetime.strptime(shift["end"], "%H:%M")
+
+            # If shift is on the same day and overlaps, return False
+            if existing_shift_date == shift_date:
+                if not (shift_end_time <= existing_start or shift_start_time >= existing_end):
+                    return False  # Overlapping shifts
+
+        # Check if adding this shift exceeds max weekly hours
         if self.assigned_hours + shift_hours > self.max_hours_per_week:
-            return False  # Would exceed weekly hour limit
+            return False  
 
         return True
     
@@ -93,6 +106,4 @@ class Employee:
 
     if __name__ == "__main__":
         print("This should NOT be executed during import.")
-
-
 
