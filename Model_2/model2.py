@@ -23,7 +23,7 @@ day = "2025-01-22"
 
 
 """ # Function to create shifts
-def create_shifts(staffing, min_hours, max_hours_wo_lunch, max_hours):
+def create_shifts(opening_hours,staffing, min_hours, max_hours_wo_lunch, max_hours):
     shifts = []
     start_time = 8  # Start time in hours
     shift_start = start_time
@@ -56,8 +56,9 @@ def create_shifts(staffing, min_hours, max_hours_wo_lunch, max_hours):
   
 
 # Function to create shifts with longer shifts and lunch breaks
-def create_shifts(required_staffing, min_hours_per_day, max_hours_wo_lunch,max_hours_per_day):
+def create_shifts(opening_hours,required_staffing, min_hours_per_day, max_hours_wo_lunch,max_hours_per_day):
     shifts = []
+    
     finished_shifts = []
     start_time = 8  # Start time in hours
     current_staffing = [0] * len(required_staffing)
@@ -123,17 +124,37 @@ def create_shifts(required_staffing, min_hours_per_day, max_hours_wo_lunch,max_h
                 sufficient_staffing = False
                 break
 
-    #OBS Vi behöver göra en funktion som tar bort lunchen och lägger till den i shiften, samt som rensar schemat bakifrån, kolla sista passet t.ex
     
-    cleaned_shifts = clean_shifts(finished_shifts)
+    
+    #A function that removes the lunch break and adds it to the shift, and that cleans the schedule from the back
+    cleaned_shifts = clean_shifts(opening_hours,finished_shifts)
     return cleaned_shifts
 
 
         
 
 
-def clean_shifts(shifts):
+def clean_shifts(opening_hours ,shifts):
     cleaned_shifts = []
+
+    
+    closing_hour = opening_hours[1].split(":")[0]
+
+    if shifts[-2][1] > shifts[-1][1]:
+        difference = shifts[-2][1] - shifts[-1][1]
+        half_difference = difference // 2  # Floor division to ensure an integer
+        remainder = difference % 2  # Get remainder if difference is odd
+
+        shifts[-2][1] -= half_difference + remainder  # Ensure no rounding errors
+        shifts[-1][1] += half_difference
+
+
+
+
+        
+
+
+
     for shift in shifts:
         cleaned_shifts.append({"start": f"{shift[0]}:00", "end": f"{shift[0]+shift[1]}:00", "lunch": "TBD"})
     return cleaned_shifts
@@ -206,7 +227,7 @@ def main(opening_hours, sales_capacity_per_hour, min_shift_hours, max_hours_with
     #uses queueing theory to model the number of customers in a store over time and returning the demanded number of employees per hour
     staffing_per_hour = model1.main(store_id,day)
 
-    shifts = create_shifts(staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day)
+    shifts = create_shifts(opening_hours,staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day)
     visualize_schedule(shifts)
     
     #return create_output(opening_hours, staffing_per_hour, shifts, store_id, day)
