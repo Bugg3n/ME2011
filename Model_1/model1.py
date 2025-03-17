@@ -4,7 +4,7 @@
 #hyperparameters
 sales_capacity = 12
 
-customer_flow_per_hour = [29, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
+customer_flow_per_hour = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
 
 
 # Function to calculate staffing per hour
