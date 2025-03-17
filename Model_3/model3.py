@@ -52,17 +52,40 @@ def assign_shifts_to_employees(shifts, employees, shift_date):
             assigned_shifts[best_employee.name].append(shift)
 
     return assigned_shifts
-
-def get_fit_score(emp, shift_date, shift_start, shift_end): # Detta ska anpassas efter oss
-    if emp.is_available(shift_date, shift_start, shift_end):
-    # Score based on early/late preferences, employment rate, and workload
-        return (
-            (10 - abs(emp.early_preference - 5)) +  # Balance early preference
-            (10 - abs(emp.late_preference - 5)) +   # Balance late preference
-            (1 - emp.assigned_hours / emp.max_hours_per_week) * 10  # Less assigned is better
-        )
-    else:
+def get_fit_score(emp, shift_date, shift_start, shift_end):
+    """
+    Calculates a fit score for assigning an employee to a shift.
+    
+    - Rewards early-preference employees for early shifts.
+    - Rewards late-preference employees for late shifts.
+    - Considers employment rate and assigned workload.
+    
+    Args:
+        emp (Employee): The employee object.
+        shift_date (str): The shift's date (YYYY-MM-DD).
+        shift_start (str): Shift start time (HH:MM).
+        shift_end (str): Shift end time (HH:MM).
+    
+    Returns:
+        float: The fit score (higher is better). Returns 0 if the employee is unavailable.
+    """
+    if not emp.is_available(shift_date, shift_start, shift_end):
         return 0
+
+    shift_start_hour = int(shift_start.split(":")[0])
+
+    early_threshold = 12  # Consider before 12:00 as an early shift
+    late_threshold = 17   # Consider after 17:00 as a late shift
+
+    early_bonus = max(0, (10 - emp.early_preference) if shift_start_hour >= early_threshold else emp.early_preference)
+    late_bonus = max(0, (10 - emp.late_preference) if shift_start_hour < late_threshold else emp.late_preference)
+
+    # Calculate workload factor (favor employees with fewer assigned hours)
+    workload_factor = (1 - emp.assigned_hours / emp.max_hours_per_week) * 10
+
+    # Final fit score
+    return early_bonus + late_bonus + workload_factor
+
 
 if __name__ == "__main__":
     main()
