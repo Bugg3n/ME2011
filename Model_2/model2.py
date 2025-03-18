@@ -17,6 +17,7 @@ opening_hours = ["08:00", "22:00"]
 sales_capacity_per_hour = 12  # A salesperson can handle 12 customers per hour
 min_shift_hours = 3
 max_hours_without_lunch = 5
+earliest_lunch_time = 11
 lunch_duration = 1 #in hours
 max_hours_per_day = 8
 store_id = "1"
@@ -263,7 +264,7 @@ def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours,
         if shift_length > max_hours_before_lunch:
             middle_section = range(shift_start_time + (shift_length // 2) -2, shift_start_time + (shift_length // 2) + 2)
             
-            middle_section = [h for h in middle_section if shift_start_time <= h < shift_end_time and h >= 11]
+            middle_section = [h for h in middle_section if shift_start_time <= h < shift_end_time and h >= earliest_lunch_time]
 
             best_lunch_hour = None
             max_overstaffing = -1
@@ -289,7 +290,7 @@ def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours,
                         
                         if hour == other_shift_end_time +1 and other_shifts_length < max_hours_before_lunch:                              
                             lunch_time = f"{hour-1}:00"
-                            print("end", other_shift_end_time)
+                            
                             
                             other_shift_end_time += 1
                             shifts[shifts.index(other_shifts)]["end"] = f"{other_shift_end_time}:00"
