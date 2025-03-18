@@ -245,6 +245,7 @@ def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_ho
 
     if visualize:
         visualize_schedule(cleaned_shifts_with_coverage_optimized, required_staffing, "Optimized Shifts")
+        input(cleaned_shifts_with_coverage_optimized)
 
     return cleaned_shifts_with_coverage
 

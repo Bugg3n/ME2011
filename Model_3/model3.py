@@ -18,6 +18,9 @@ def main():
     print(f"Alice available on {shift_date}? {employees[0].is_available(shift_date, shift_start, shift_end)}")
     print(f"Bob available on {shift_date}? {employees[1].is_available(shift_date, shift_start, shift_end)}")
 
+
+
+
 def assign_shifts_to_employees(shifts, employees, shift_date):
     """
     Assign shifts to employees optimally based on their availability, preferences, and employment rate.

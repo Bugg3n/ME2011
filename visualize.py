@@ -1,104 +1,133 @@
+import webbrowser
+import os
 
-import matplotlib.pyplot as plt
-import numpy as np
+weekly_schedule = [
+    [{'start': '8:00', 'end': '16:00', 'lunch': '11:00'}, {'start': '14:00', 'end': '22:00', 'lunch': '18:00'}],
+    [{'start': '9:00', 'end': '17:00', 'lunch': '12:00'}, {'start': '15:00', 'end': '22:00', 'lunch': 'None'}],
+    [{'start': '8:00', 'end': '16:00', 'lunch': '12:00'}, {'start': '14:00', 'end': '22:00', 'lunch': '18:00'}],
+    [{'start': '9:00', 'end': '17:00', 'lunch': 'None'}, {'start': '15:00', 'end': '22:00', 'lunch': 'None'}],
+    [{'start': '8:00', 'end': '16:00', 'lunch': '11:00'}, {'start': '14:00', 'end': '22:00', 'lunch': '18:00'}],
+    [{'start': '10:00', 'end': '18:00', 'lunch': '13:00'}, {'start': '14:00', 'end': '22:00', 'lunch': '18:00'}],
+    [{'start': '8:00', 'end': '14:00', 'lunch': 'None'}, {'start': '12:00', 'end': '18:00', 'lunch': '15:00'}]
+]
 
-# Input data
-def main():
-    data = {
-        'day': '2025-01-22',
-        'store_id': '1',
-        'opening_hours': ['08:00', '21:00'],
-        'staffing_per_hour': {
-            '8:00': 0, '9:00': 1, '10:00': 1, '11:00': 2, '12:00': 2, '13:00': 2,
-            '14:00': 3, '15:00': 3, '16:00': 3, '17:00': 3, '18:00': 2, '19:00': 2,
-            '20:00': 1, '21:00': 1
-        },
-        'shift_suggestions': [
-            {'start': '8:00', 'end': '9:00', 'staff_needed': 0},
-            {'start': '9:00', 'end': '11:00', 'staff_needed': 1},
-            {'start': '11:00', 'end': '14:00', 'staff_needed': 2},
-            {'start': '14:00', 'end': '18:00', 'staff_needed': 3},
-            {'start': '18:00', 'end': '20:00', 'staff_needed': 2},
-            {'start': '20:00', 'end': '22:00', 'staff_needed': 1}
-        ],
-        'metadata': {'delivery_day': True}
-    }
+html_content = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Weekly Schedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            padding: 20px;
+        }
+        .day-container {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        .day-title {
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        }
+        .shift-details {
+            margin-top: 10px;
+            display: none; /* Initially hidden */
+        }
+        .shift-row {
+            position: relative;
+            height: 35px;
+            background-color: #e6e6e6;
+            margin-bottom: 5px;
+            border-radius: 6px;
+        }
+        .shift-block, .lunch-block {
+            position: absolute;
+            height: 100%;
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .shift-block {
+            background-color: #4CAF50;
+        }
+        .lunch-block {
+            background-color: #FF9800;
+        }
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 0 5px;
+        }
+    </style>
+    <script>
+        function toggleDetails(id) {
+            var content = document.getElementById(id);
+            if (content.style.display === "none" || content.style.display === "") {
+                content.style.display = "block";
+            } else {
+                content.style.display = "none";
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="schedule-container">
+"""
 
-    # Convert time to numerical format (hours as floats)
-    def time_to_float(time_str):
-        h, m = map(int, time_str.replace(':', '.').split('.'))
-        return h + m / 60
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+start_hour = 8
+end_hour = 22
+total_minutes = (end_hour - start_hour) * 60
 
-    # Extract shift information
-    shifts = data['shift_suggestions']
-    opening_time = time_to_float(data['opening_hours'][0])
-    closing_time = time_to_float(data['opening_hours'][1])
+for day_idx, day in enumerate(weekly_schedule):
+    day_id = f"day{day_idx}"
+    html_content += f'''
+    <div class="day-container">
+        <div class="day-title" onclick="toggleDetails('{day_id}')">{days[day_idx]}</div>
+        <div class="shift-details" id="{day_id}">
+    '''
+    for shift in day:
+        sh, sm = map(int, shift['start'].split(':'))
+        eh, em = map(int, shift['end'].split(':'))
+        shift_start_pct = ((sh - start_hour) * 60 + sm) / total_minutes * 100
+        shift_width_pct = ((eh - sh) * 60 + (em - sm)) / total_minutes * 100
 
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    # Generate shift bars
-    for shift in shifts:
-        start = time_to_float(shift['start'])
-        end = time_to_float(shift['end'])
-        staff = shift['staff_needed']
+        html_content += '<div class="shift-row">'
+        html_content += f'<div class="shift-block" style="left:{shift_start_pct}%; width:{shift_width_pct}%;">{shift["start"]}-{shift["end"]}</div>'
         
-        ax.barh(y=staff, width=end-start, left=start, height=0.5, align='center', color='skyblue', edgecolor='black')
+        if shift['lunch'] != 'None':
+            lh, lm = map(int, shift['lunch'].split(':'))
+            lunch_start_pct = ((lh - start_hour) * 60 + lm) / total_minutes * 100
+            lunch_width_pct = 30 / total_minutes * 100  # 30-minute lunch
+            html_content += f'<div class="lunch-block" style="left:{lunch_start_pct}%; width:{lunch_width_pct}%;">Lunch</div>'
 
-    # Labels and formatting
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Staff Needed')
-    ax.set_title(f"Shift Schedule for {data['day']}")
-    ax.set_xticks(np.arange(opening_time, closing_time + 1, 1))
-    ax.set_xticklabels([f"{int(t)}:00" for t in np.arange(opening_time, closing_time + 1, 1)])
-    ax.set_yticks(range(4))
-    ax.set_yticklabels(range(4))
+        html_content += '</div>'
 
-    plt.grid(axis='x', linestyle='--', alpha=0.7)
-    plt.show()
+    html_content += '<div class="time-labels">'
+    for t in range(start_hour, end_hour + 1, 2):
+        html_content += f'<span>{t}:00</span>'
+    html_content += '</div></div></div>'
 
-def visualize_assigned_shifts(assigned_shifts, shift_date):
-    import matplotlib.pyplot as plt
-    import numpy as np
+html_content += """
+</div>
+</body>
+</html>
+"""
 
-    employee_names = list(assigned_shifts.keys())
-    num_employees = len(employee_names)
+file_path = "interactive_schedule.html"
+with open(file_path, "w") as file:
+    file.write(html_content)
 
-    fig, ax = plt.subplots(figsize=(12, num_employees * 0.6 + 2))
-
-    def time_to_float(time_str):
-        """Convert time in 'HH:MM' format to float (e.g., 9:00 -> 9.0)."""
-        hours, minutes = map(int, time_str.split(":"))
-        return hours + minutes / 60
-
-    y_positions = np.arange(num_employees)
-
-    for i, employee in enumerate(employee_names):
-        shifts = assigned_shifts[employee]
-        for shift in shifts:
-            start_time = time_to_float(shift["start"])
-            end_time = time_to_float(shift["end"])
-            ax.barh(y_positions[i], end_time - start_time, left=start_time, height=0.4, 
-                    color='skyblue', edgecolor='black', label="Shift" if i == 0 else "")
-
-            ax.text((start_time + end_time) / 2, y_positions[i], f"{shift['start']} - {shift['end']}", 
-                    va='center', ha='center', fontsize=10, color='black')
-
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(employee_names)
-    ax.set_xlabel("Time of Day")
-    ax.set_title(f"Assigned Shifts for {shift_date}")
-
-    x_ticks = np.arange(8, 22, 1)
-    ax.set_xticks(x_ticks)
-    ax.set_xticklabels([f"{int(t)}:00" for t in x_ticks])
-
-    ax.grid(axis='x', linestyle='--', alpha=0.7)
-
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
-
-
+webbrowser.open(f"file:///{os.path.abspath(file_path)}")
