@@ -18,7 +18,7 @@ sales_capacity_per_hour = 12  # A salesperson can handle 12 customers per hour
 min_shift_hours = 3
 max_hours_without_lunch = 5
 lunch_duration = 1 #in hours
-max_hours_per_day = 8
+max_hours_per_day = 10
 store_id = "1"
 day = "2025-01-22"
 
@@ -137,7 +137,7 @@ def clean_shifts(opening_hours ,shifts):
     return cleaned_shifts
 
 ######################################################### Method 2 ####################################################################
-
+ 
 def shift_cost(shift_length):
     cost = [1,1,1,0.85,0.85,0.75,0.75,0.5,2,2]
     #sum of cost for the length of the shift
@@ -145,7 +145,7 @@ def shift_cost(shift_length):
 
 #Shift is a vector of 1s in the hours where the shift is active
 def transaction_gain(shift, required_staffing, current_staffing):
-    """Calculates the net gain of a shift based on required staffing."""
+    #Calculates the net gain of a shift based on required staffing.
     hours_worked = sum(shift)
     cost = shift_cost(hours_worked)
 
@@ -160,11 +160,11 @@ def is_sufficient_staffing(current_staffing, required_staffing):
     return all(c >= r for c, r in zip(current_staffing, required_staffing))
                 
 
-def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_hours_before_lunch, max_hours_per_day):
-    """Finds an optimized schedule for store clerks iteratively instead of using recursion."""
+def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_hours_before_lunch, max_hours_per_day,visualize = False):
+    #Finds an optimized schedule for store clerks iteratively instead of using recursion.
 
     # Ensure required staffing is at least 1 everywhere
-    required_staffing = [max(1, r) for r in required_staffing]
+    
     
     current_staffing = [0] * len(required_staffing)
     shifts = []  # Store valid shifts
@@ -215,25 +215,215 @@ def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_ho
     for shift in shifts:
         shift_start_time = shift.index(1) + int(opening_hours[0].split(":")[0])
         shift_end_time = shift_start_time + shift.count(1)
-        lunch_time = "TBD"
+        lunch_time = None
         cleaned_shifts.append({"start": f"{shift_start_time}:00", "end": f"{shift_end_time}:00", "lunch": lunch_time})
-    print(cleaned_shifts)
     
+    
+
+    cleaned_shifts_with_lunch  = add_lunch_breaks(cleaned_shifts, required_staffing, current_staffing, opening_hours, max_hours_before_lunch)
+    
+    
+
+    cleaned_shifts_with_coverage = adjust_for_coverage(cleaned_shifts_with_lunch, required_staffing, opening_hours,min_hours_per_day)
+
+    
+
+    cleaned_shifts_with_coverage_optimized = optimize_shift_timings(cleaned_shifts_with_coverage, required_staffing, opening_hours,min_hours_per_day)
+
+    if visualize:
+        
+        visualize_schedule(cleaned_shifts, required_staffing, "Initial Shifts")
+        
+        visualize_schedule(cleaned_shifts_with_coverage, required_staffing, "Shifts with Lunch Breaks and Coverage")
+        visualize_schedule(cleaned_shifts_with_coverage_optimized, required_staffing, "Optimized Shifts")
+
+    return cleaned_shifts_with_coverage
+
+
+def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours, max_hours_before_lunch):
+    """Adds lunch breaks to shifts if they exceed max_hours_before_lunch, placing them optimally."""
+    
+    cleaned_shifts = []
+    
+    for shift in shifts:
+        shift_start_time = int(shift["start"].split(":")[0])
+        shift_end_time = int(shift["end"].split(":")[0])
+        shift_length = shift_end_time - shift_start_time
+
+        lunch_time = "None"
+
+        if shift_length > max_hours_before_lunch:
+            middle_section = range(shift_start_time + (shift_length // 2) -2, shift_start_time + (shift_length // 2) + 2)
+            
+            middle_section = [h for h in middle_section if shift_start_time <= h < shift_end_time and h >= 11]
+
+            best_lunch_hour = None
+            max_overstaffing = -1
+
+            for hour in middle_section:
+                staffing_index = hour - int(opening_hours[0].split(":")[0])
+                if current_staffing[staffing_index] > required_staffing[staffing_index]:  # Overstaffed hour
+                    overstaffing_amount = current_staffing[staffing_index] - required_staffing[staffing_index]
+                    if overstaffing_amount > max_overstaffing:
+                        max_overstaffing = overstaffing_amount
+                        best_lunch_hour = hour
+
+            if best_lunch_hour:
+                lunch_time = f"{best_lunch_hour}:00"
+            else:
+                for hour in middle_section:
+                    for other_shifts in shifts:
+                        other_shift_start_time = int(other_shifts["start"].split(":")[0])
+                        other_shift_end_time = int(other_shifts["end"].split(":")[0])
+                        other_shifts_length = other_shift_end_time - other_shift_start_time
+                        
+                        if hour == other_shift_end_time +1 and other_shifts_length < max_hours_before_lunch:                              
+                            lunch_time = f"{hour-1}:00"
+                            
+                            other_shift_end_time += 1
+                            shifts[shifts.index(other_shifts)]["end"] = f"{other_shift_end_time}:00"
+                            break
+                        elif hour == other_shift_start_time -1 and other_shifts_length < max_hours_before_lunch:
+                            lunch_time = f"{hour}:00"
+                            other_shift_start_time -= 1
+                            shifts[shifts.index(other_shifts)]["start"] = f"{other_shift_start_time}:00"
+                        else:
+                            lunch_time = f"{middle_section[1]}:00" #default to middle hour of the feasible lunch break hours
+                            
+
+                            
+                
+                
+            
+
+        cleaned_shifts.append({"start": shift["start"], "end": shift["end"], "lunch": lunch_time})
+
     return cleaned_shifts
-##########################################################################################################################################333
-  
-def visualize_schedule(schedule, staff_needed):
+
+
+def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_day):
     """
-    Visualizes a work schedule using a horizontal bar chart with an additional "Staff Needed" metric.
+    Ensures all hours are fully covered, extending shifts or adding new ones optimally.
+    Uses transaction_gain to determine the best adjustment.
+    """
+
+    current_staffing = [0] * len(required_staffing)
+
+    # Convert shift start/end times to hour indices for tracking
+    shift_intervals = []
+    for shift in shifts:
+        start_idx = int(shift["start"].split(":")[0]) - int(opening_hours[0].split(":")[0])
+        end_idx = int(shift["end"].split(":")[0]) - int(opening_hours[0].split(":")[0])
+        lunch_idx = None if shift["lunch"] == "None" else int(shift["lunch"].split(":")[0]) - int(opening_hours[0].split(":")[0])
+        
+        for i in range(start_idx, end_idx):
+            if i != lunch_idx:  # Do not count lunch break as coverage
+                current_staffing[i] += 1
+
+        shift_intervals.append((start_idx, end_idx, lunch_idx))
+
+    # Identify coverage gaps and decide whether to extend a shift or add a new one
+    for i in range(len(required_staffing)):
+        if current_staffing[i] < required_staffing[i]:  # Gap detected
+            best_option = None
+            best_gain = float('-inf')
+
+            # **Option 1: Extend an existing shift**
+            for j, (start_idx, end_idx, lunch_idx) in enumerate(shift_intervals):
+                if start_idx <= i < end_idx and (lunch_idx is None or lunch_idx != i):
+                    # Simulate extending the shift
+                    extended_shift = shifts[j].copy()
+                    extended_shift["end"] = f"{int(extended_shift['end'].split(':')[0]) + 1}:00"
+                    
+                    # Compute gain
+                    extended_gain = transaction_gain([1] * (end_idx - start_idx + 1), required_staffing, current_staffing)
+
+                    if extended_gain > best_gain:
+                        best_gain = extended_gain
+                        best_option = ("extend", j)
+
+            # **Option 2: Create a new shift**
+            new_shift_start = i + int(opening_hours[0].split(":")[0])
+            new_shift_end = new_shift_start + min_hours_per_day
+            new_shift = {"start": f"{new_shift_start}:00", "end": f"{new_shift_end}:00", "lunch": "None"}
+
+            # Compute gain
+            new_shift_gain = transaction_gain([1] * min_hours_per_day, required_staffing, current_staffing)
+
+            if new_shift_gain > best_gain:
+                best_gain = new_shift_gain
+                best_option = ("new", new_shift)
+
+            # Apply the best option
+            if best_option[0] == "extend":
+                shifts[best_option[1]]["end"] = f"{int(shifts[best_option[1]]['end'].split(':')[0]) + 1}:00"
+            else:
+                shifts.append(best_option[1])
+
+            # Update staffing after the change
+            for k in range(i, i + min_hours_per_day):
+                if k < len(current_staffing):
+                    current_staffing[k] += 1
+
+    return shifts
+
+def optimize_shift_timings(shifts, required_staffing, opening_hours,min_hours_per_day):
+   
+    
+    optimized_shifts = []
+    opening_time = int(opening_hours[0].split(":")[0])
+    current_staffing = [0] * len(required_staffing)
+
+
+    for shift in shifts:
+        start_time = int(shift["start"].split(":")[0])
+        end_time = int(shift["end"].split(":")[0])
+        lunch_time = shift["lunch"]
+
+        for i in range(0, len(required_staffing)):
+            if shift["lunch"] == None or shift["lunch"] == "None":
+                
+                if i + opening_time >= start_time and i + opening_time < end_time:
+                    current_staffing[i] += 1
+            else:
+                if i + opening_time >= start_time and i + opening_time < end_time and i + opening_time != int(lunch_time.split(":")[0]):
+                    current_staffing[i] += 1
+            
+    for shift in shifts:
+        start_time = int(shift["start"].split(":")[0])
+        end_time = int(shift["end"].split(":")[0])
+        #check if the start time or end time can be moved because of overstaffing
+        if shift["lunch"] == None or shift["lunch"] == "None":
+            if current_staffing[start_time - opening_time] > required_staffing[start_time - opening_time] and end_time - start_time > min_hours_per_day:
+                
+                start_time += 1
+                current_staffing[start_time - opening_time] -= 1
+                shifts[shifts.index(shift)]["start"] = f"{start_time}:00"
+            elif current_staffing[end_time - opening_time] > required_staffing[end_time - opening_time] and end_time - start_time > min_hours_per_day:
+                end_time -= 1
+                current_staffing[end_time - opening_time] -= 1
+                shifts[shifts.index(shift)]["end"] = f"{end_time}:00"
+    return shifts
+        
+        
+ 
+##########################################################################################################################################
+
+def visualize_schedule(schedule, staff_needed, title= "placeholder"):
+    """
+    Visualizes a work schedule using a horizontal bar chart with an additional "Staff Needed" metric,
+    and highlights lunch breaks.
 
     Parameters:
     schedule (list of dict): A list of shifts, each represented as a dictionary 
-                             with 'start' and 'end' time strings (e.g., '9:00').
+                             with 'start', 'end', and 'lunch' time strings (e.g., '9:00').
     staff_needed (list of int): A list of values representing staff requirements over time.
     """
     
     def time_to_float(time_str):
         """Convert time string (e.g., '9:00') to float (e.g., 9.0)."""
+        if time_str == "None" or time_str is None:
+            return None  # No lunch break
         h, m = map(int, time_str.split(':'))
         return h + m / 60
 
@@ -242,6 +432,7 @@ def visualize_schedule(schedule, staff_needed):
     shift_start = [time_to_float(shift['start']) for shift in schedule]
     shift_end = [time_to_float(shift['end']) for shift in schedule]
     shift_duration = [end - start for start, end in zip(shift_start, shift_end)]
+    lunch_times = [time_to_float(shift['lunch']) for shift in schedule]
 
     # Define time labels based on the staff_needed list
     time_labels = np.arange(8, 8 + len(staff_needed), 1)  # Time from 8:00 onward
@@ -253,11 +444,17 @@ def visualize_schedule(schedule, staff_needed):
     y_positions = np.arange(len(schedule))
     ax1.barh(y_positions, shift_duration, left=shift_start, height=0.6, color='skyblue', edgecolor='black', label="Shifts")
 
+    # Highlight lunch breaks in gray
+    for i, lunch_time in enumerate(lunch_times):
+        if lunch_time is not None:
+            ax1.barh(y_positions[i], 1, left=lunch_time, height=0.6, color='gray', label="Lunch Break" if i == 0 else "")
+            ax1.text(lunch_time + 0.1, y_positions[i], 'Lunch', va='center', ha='left', color='black', fontsize=10, fontweight='bold')
+
     # Labels for shifts
     ax1.set_yticks(y_positions)
     ax1.set_yticklabels(shift_labels)
     ax1.set_xlabel("Time")
-    ax1.set_title("Work Schedule Visualization with Staff Needed")
+    ax1.set_title(title)
 
     # Set x-axis to display time labels
     ax1.set_xticks(time_labels)
@@ -266,7 +463,7 @@ def visualize_schedule(schedule, staff_needed):
     # Create a secondary y-axis for the "Staff Needed" metric
     ax2 = ax1.twinx()
     ax2.set_ylim(ax1.get_ylim())  # Align y-axis limits
-    ax2.bar(time_labels, staff_needed, width=0.4, alpha=0.6, color='red', label="Staff Needed")
+    ax2.bar(time_labels + 0.5, staff_needed, width=0.4, alpha=0.6, color='red', label="Staff Needed")
     ax2.set_ylabel("Staff Needed")
 
     # Legends
@@ -275,7 +472,6 @@ def visualize_schedule(schedule, staff_needed):
 
     plt.grid(axis='x', linestyle='--', alpha=0.7)
     plt.show()
-
 
 # Function to create output for Model 3
 def create_output(opening_hours, staffing_per_hour, shifts, store_id, day):
@@ -301,14 +497,16 @@ def main(opening_hours, store_id, day,
 
     #uses queueing theory to model the number of customers in a store over time and returning the demanded number of employees per hour
     staffing_per_hour = model1.main(store_id,day)
+    staffing_per_hour = [max(1, r) for r in staffing_per_hour]
 
-    shifts = create_shifts(opening_hours,staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day)
-    visualize_schedule(shifts,staffing_per_hour)
-    print(shifts)
-    best_shift = construct_shifts(opening_hours,staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day)
-    visualize_schedule(best_shift,staffing_per_hour)
+    #shifts = create_shifts(opening_hours,staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day)
+    #visualize_schedule(shifts,staffing_per_hour)
+    #print(shifts)
+    best_shift = construct_shifts(opening_hours,staffing_per_hour, min_shift_hours, max_hours_without_lunch, max_hours_per_day,visualize = True)
+   
     
-    #return create_output(opening_hours, staffing_per_hour, shifts, store_id, day)
+    
+   
     return best_shift
 
 if __name__ == "__main__":
