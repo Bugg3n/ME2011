@@ -9,6 +9,7 @@ customer_flow_per_hour = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
 
 # Function to calculate staffing per hour
 def calculate_staffing(customer_flow, sales_capacity):
+    
     return [round(customers / sales_capacity) for customers in customer_flow]
 
 
@@ -16,7 +17,7 @@ def calculate_staffing(customer_flow, sales_capacity):
 def main(store_id, day):
 
     staffing = calculate_staffing(customer_flow_per_hour, sales_capacity)
-  
+    print(staffing)
     return staffing
 
 

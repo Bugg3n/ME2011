@@ -1,7 +1,7 @@
 from Model_1 import model1
 from Model_2 import model2
 from Model_3 import model3
-from visualize import *
+from visualize import main as visualize_main
 from Model_3.employees import *
 
 sales_capacity = 12
@@ -14,9 +14,9 @@ def get_data():
 
 
 #Recieves demand for the store from model1
-def get demand():
-
-    return model1.main(customer_flow_per_hour, sales_capacity)
+def get_demand():
+    demand = model1.main(customer_flow_per_hour, sales_capacity)
+    return 0
 
 
 def main():
@@ -27,11 +27,13 @@ def main():
     opening_hours = ["08:00", "22:00"]
     min_shift_hours = 3
     max_hours_without_lunch = 5
-    max_hours_per_day = 8
+    max_hours_per_day = 10
     staffing_per_hour = model1.calculate_staffing(customer_flow_per_hour, sales_capacity)
     
     print(model1.calculate_staffing(customer_flow_per_hour, sales_capacity))
+
     print("📊 Generating shift suggestions...")
+    staffing_per_hour = [max(1, r) for r in staffing_per_hour]
     shifts = model2.construct_shifts(
         opening_hours=opening_hours,
         required_staffing = staffing_per_hour,
@@ -43,7 +45,7 @@ def main():
     print("✅ Shift suggestions generated.")
 
     print("📊 Visualizing shift creation from Model 2...")
-    model2.visualize_schedule(shifts, staffing_per_hour)
+    model2.visualize_schedule(shifts, staffing_per_hour,day)
 
     print("👥 Loading employee data...")
     employees = load_employees()
@@ -54,12 +56,19 @@ def main():
     print("✅ Shift assignment completed.")
 
     print("📊 Visualizing the final schedule...")
-    visualize_assigned_shifts(assigned_shifts, day)
+    #visualize_assigned_shifts(assigned_shifts, day)
 
+
+    
     return assigned_shifts
 
 if __name__ == "__main__":
     final_schedule = main()
     print("📅 Final Schedule:")
     for employee, shifts in final_schedule.items():
-        print(f"{employee}: {shifts}")
+       print(f"{employee}: {shifts}")
+
+
+
+    #this function opens up a window displaying some interactive information about the schedule that has been created
+    visualize_main(year_month= "2025 - January",store = "SE01", monthly_schedule = None,staff_needed=None)

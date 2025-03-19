@@ -1,0 +1,500 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Monthly Schedule Viewer</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                background-color: #f0f4f8; 
+                padding: 20px; 
+                margin: 0; 
+            }
+            .container { 
+                max-width: 1000px; 
+                margin: auto; 
+                background-color: #fff; 
+                border-radius: 10px; 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+                overflow: hidden; 
+            }
+            .header { 
+                text-align: center; 
+                padding: 20px; 
+                background: linear-gradient(135deg, #6a11cb, #2575fc); 
+                color: white; 
+                margin-bottom: 20px; 
+            }
+            .header h1 { 
+                margin: 0; 
+                font-size: 28px; 
+                font-weight: 600; 
+            }
+            .header h2 { 
+                margin: 5px 0 0; 
+                font-size: 20px; 
+                font-weight: 400; 
+            }
+            .section { 
+                margin-bottom: 20px; 
+                border-radius: 10px; 
+                overflow: hidden; 
+                background-color: #fff; 
+                box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1); 
+            }
+            .section .section { 
+                margin-bottom: 10px; 
+            }
+            .section-title { 
+                padding: 15px; 
+                cursor: pointer; 
+                user-select: none; 
+                display: flex; 
+                align-items: center; 
+                transition: background-color 0.3s ease; 
+            }
+            .week-title {
+                background-color: #e3f2fd; 
+                font-size: 20px; 
+                font-weight: bold; 
+                border-bottom: 2px solid #90caf9; 
+            }
+            .day-title {
+                background-color: #f8f9fa; 
+                font-size: 16px; 
+                font-weight: 600; 
+                border-bottom: 1px solid #dee2e6; 
+            }
+            .hours {
+                color: #666; 
+                font-weight: 600; 
+                margin-left: 8px; 
+                font-size: 0.85em; 
+                font-style: italic; 
+                opacity: 0.9; 
+            }
+            .week-title:hover { background-color: #bbdefb; }
+            .day-title:hover { background-color: #e9ecef; }
+            .content { 
+                display: none; 
+                padding: 15px; 
+                transition: opacity 0.3s ease; 
+            }
+            .shift-row { 
+                position: relative; 
+                height: 35px; 
+                background-color: #e6e6e6; 
+                margin-bottom: 5px; 
+                border-radius: 6px; 
+            }
+            .shift-block, .lunch-block { 
+                position: absolute; 
+                height: 100%; 
+                color: white; 
+                border-radius: 6px; 
+                font-size: 13px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+            }
+            .shift-block { background-color: #4CAF50; }
+            .lunch-block { background-color: #FF9800; }
+            button { 
+                margin-top: 10px; 
+                padding: 8px 16px; 
+                font-size: 14px; 
+                cursor: pointer; 
+                background-color: #2575fc; 
+                color: white; 
+                border: none; 
+                border-radius: 5px; 
+                transition: background-color 0.3s ease; 
+            }
+            button:hover { background-color: #1a5bbf; }
+            .graph { margin-top: 10px; }
+            .graph canvas { max-width: 100%; }
+            .explanation { 
+                margin-top: 15px; 
+                padding: 10px; 
+                background-color: #f8f9fa; 
+                border-radius: 5px; 
+                border: 1px solid #dee2e6; 
+                font-size: 14px; 
+                color: #333; 
+            }
+            .timeline {
+                display: flex; 
+                justify-content: space-between; 
+                margin-top: 10px; 
+                font-size: 12px; 
+                color: #555; 
+            }
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const staffNeeded = [[[2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1]], [[2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1]], [[2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1]], [[2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1], [2, 1, 1, 0, 1, 1, 3, 3, 3, 3, 2, 1, 1, 1]]];
+
+            function toggle(id) {
+                let el = document.getElementById(id);
+                if (el.style.display === "none" || el.style.display === "") {
+                    el.style.display = "block";
+                } else {
+                    el.style.display = "none";
+                }
+            }
+
+            function showGraph(weekIdx, dayIdx) {
+                const graphId = `week_${weekIdx}_day_${dayIdx}_graph`;
+                let graphEl = document.getElementById(graphId);
+
+                if (graphEl.style.display === "none" || graphEl.style.display === "") {
+                    // Generate the graph
+                    const ctx = document.createElement('canvas');
+                    ctx.id = `chart_${weekIdx}_${dayIdx}`;
+                    graphEl.innerHTML = ''; // Clear previous graph
+                    graphEl.appendChild(ctx);
+
+                    const data = staffNeeded[weekIdx - 1][dayIdx];
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: Array.from({length: data.length}, (_, i) => `Hour ${i + 1}`),
+                            datasets: [{
+                                label: 'Staff Needed',
+                                data: data,
+                                backgroundColor: 'skyblue',
+                                borderColor: 'blue',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Staff Needed'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Hour (from opening time)'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Staff Needed per Hour'
+                                }
+                            }
+                        }
+                    });
+
+                    // Add a prewritten explanation text
+                    const explanation = document.createElement('div');
+                    explanation.className = 'explanation';
+                    explanation.innerHTML = `
+                        <strong>Explanation:</strong><br>
+                        This graph shows the number of staff required per hour (blue bars). 
+                        Shifts are indicated by green blocks in the schedule above, and lunch breaks 
+                        are highlighted in orange. Adjustments can be made based on real-time demand.
+                    `;
+                    graphEl.appendChild(explanation);
+
+                    graphEl.style.display = "block";
+                } else {
+                    graphEl.style.display = "none";
+                }
+            }
+        </script>
+    </head>
+    <body>
+    <div class="container">
+        <div class="header">
+            <h1>Schedule for Store: Store 101</h1>
+            <h2>2025-03</h2>
+        </div>
+    
+        <div class="section">
+            <div class="section-title week-title" onclick="toggle('week_1')">
+                Week 1 - <span class="hours">112.0h</span>
+            </div>
+            <div class="content" id="week_1">
+        
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_0')">
+                    Monday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_0">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 0)">Further details</button>
+            <div class="graph" id="week_1_day_0_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_1')">
+                    Tuesday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_1">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 1)">Further details</button>
+            <div class="graph" id="week_1_day_1_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_2')">
+                    Wednesday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_2">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 2)">Further details</button>
+            <div class="graph" id="week_1_day_2_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_3')">
+                    Thursday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_3">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 3)">Further details</button>
+            <div class="graph" id="week_1_day_3_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_4')">
+                    Friday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_4">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 4)">Further details</button>
+            <div class="graph" id="week_1_day_4_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_5')">
+                    Saturday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_5">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 5)">Further details</button>
+            <div class="graph" id="week_1_day_5_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_1_day_6')">
+                    Sunday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_1_day_6">
+            <div class="shift-summary"><div>Shift: 8:00 - 16:00 | Lunch: 11:00</div><div>Shift: 14:00 - 22:00 | Lunch: 18:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:21.428571428571427%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:42.857142857142854%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:71.42857142857143%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(1, 6)">Further details</button>
+            <div class="graph" id="week_1_day_6_graph" style="display: none;"></div>
+            </div></div></div></div>
+        <div class="section">
+            <div class="section-title week-title" onclick="toggle('week_2')">
+                Week 2 - <span class="hours">105.0h</span>
+            </div>
+            <div class="content" id="week_2">
+        
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_0')">
+                    Monday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_0">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 0)">Further details</button>
+            <div class="graph" id="week_2_day_0_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_1')">
+                    Tuesday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_1">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 1)">Further details</button>
+            <div class="graph" id="week_2_day_1_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_2')">
+                    Wednesday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_2">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 2)">Further details</button>
+            <div class="graph" id="week_2_day_2_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_3')">
+                    Thursday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_3">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 3)">Further details</button>
+            <div class="graph" id="week_2_day_3_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_4')">
+                    Friday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_4">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 4)">Further details</button>
+            <div class="graph" id="week_2_day_4_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_5')">
+                    Saturday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_5">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 5)">Further details</button>
+            <div class="graph" id="week_2_day_5_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_2_day_6')">
+                    Sunday - <span class="hours">15.0h</span>
+                </div>
+                <div class="content" id="week_2_day_6">
+            <div class="shift-summary"><div>Shift: 9:00 - 17:00 | Lunch: 12:00</div><div>Shift: 15:00 - 22:00</div></div><div class="shift-row"><div class="shift-block" style="left:7.142857142857142%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:28.57142857142857%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:50.0%; width:50.0%;"></div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(2, 6)">Further details</button>
+            <div class="graph" id="week_2_day_6_graph" style="display: none;"></div>
+            </div></div></div></div>
+        <div class="section">
+            <div class="section-title week-title" onclick="toggle('week_3')">
+                Week 3 - <span class="hours">112.0h</span>
+            </div>
+            <div class="content" id="week_3">
+        
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_0')">
+                    Monday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_0">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 0)">Further details</button>
+            <div class="graph" id="week_3_day_0_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_1')">
+                    Tuesday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_1">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 1)">Further details</button>
+            <div class="graph" id="week_3_day_1_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_2')">
+                    Wednesday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_2">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 2)">Further details</button>
+            <div class="graph" id="week_3_day_2_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_3')">
+                    Thursday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_3">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 3)">Further details</button>
+            <div class="graph" id="week_3_day_3_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_4')">
+                    Friday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_4">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 4)">Further details</button>
+            <div class="graph" id="week_3_day_4_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_5')">
+                    Saturday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_5">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 5)">Further details</button>
+            <div class="graph" id="week_3_day_5_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_3_day_6')">
+                    Sunday - <span class="hours">16.0h</span>
+                </div>
+                <div class="content" id="week_3_day_6">
+            <div class="shift-summary"><div>Shift: 10:00 - 18:00 | Lunch: 13:00</div><div>Shift: 12:00 - 20:00 | Lunch: 16:00</div></div><div class="shift-row"><div class="shift-block" style="left:14.285714285714285%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:35.714285714285715%; width:3.571428571428571%;">Lunch</div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:57.14285714285714%;"></div><div class="lunch-block" style="left:57.14285714285714%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(3, 6)">Further details</button>
+            <div class="graph" id="week_3_day_6_graph" style="display: none;"></div>
+            </div></div></div></div>
+        <div class="section">
+            <div class="section-title week-title" onclick="toggle('week_4')">
+                Week 4 - <span class="hours">84.0h</span>
+            </div>
+            <div class="content" id="week_4">
+        
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_0')">
+                    Monday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_0">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 0)">Further details</button>
+            <div class="graph" id="week_4_day_0_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_1')">
+                    Tuesday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_1">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 1)">Further details</button>
+            <div class="graph" id="week_4_day_1_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_2')">
+                    Wednesday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_2">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 2)">Further details</button>
+            <div class="graph" id="week_4_day_2_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_3')">
+                    Thursday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_3">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 3)">Further details</button>
+            <div class="graph" id="week_4_day_3_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_4')">
+                    Friday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_4">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 4)">Further details</button>
+            <div class="graph" id="week_4_day_4_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_5')">
+                    Saturday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_5">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 5)">Further details</button>
+            <div class="graph" id="week_4_day_5_graph" style="display: none;"></div>
+            </div></div>
+            <div class="section">
+                <div class="section-title day-title" onclick="toggle('week_4_day_6')">
+                    Sunday - <span class="hours">12.0h</span>
+                </div>
+                <div class="content" id="week_4_day_6">
+            <div class="shift-summary"><div>Shift: 8:00 - 14:00</div><div>Shift: 12:00 - 18:00 | Lunch: 15:00</div></div><div class="shift-row"><div class="shift-block" style="left:0.0%; width:42.857142857142854%;"></div></div><div class="shift-row"><div class="shift-block" style="left:28.57142857142857%; width:42.857142857142854%;"></div><div class="lunch-block" style="left:50.0%; width:3.571428571428571%;">Lunch</div></div><div class="timeline"><div>8:00</div><div>9:00</div><div>10:00</div><div>11:00</div><div>12:00</div><div>13:00</div><div>14:00</div><div>15:00</div><div>16:00</div><div>17:00</div><div>18:00</div><div>19:00</div><div>20:00</div><div>21:00</div><div>22:00</div></div>
+            <button onclick="showGraph(4, 6)">Further details</button>
+            <div class="graph" id="week_4_day_6_graph" style="display: none;"></div>
+            </div></div></div></div>
+    </div>
+    </body>
+    </html>
+    
