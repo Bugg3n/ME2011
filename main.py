@@ -7,6 +7,18 @@ from Model_3.employees import *
 sales_capacity = 12
 customer_flow_per_hour = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
 
+
+#get data from kjell
+def get_data():
+    return 0
+
+
+#Recieves demand for the store from model1
+def get demand():
+
+    return model1.main(customer_flow_per_hour, sales_capacity)
+
+
 def main():
     """Main function to create an optimized employee schedule."""
     

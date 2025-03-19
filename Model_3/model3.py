@@ -4,20 +4,6 @@ from datetime import date
 # This part of the code is supposed to take the shift suggestions from part 2 and then create the actual schedule. 
 # It also visualizes the schedule
 
-def main():
-    employees = load_employees()
-
-
-    for emp in employees:
-        print(emp)
-
-    shift_date = "2025-03-15" # Alice should be unavailable
-    shift_start = "09:00"
-    shift_end = "17:00"
-
-    print(f"Alice available on {shift_date}? {employees[0].is_available(shift_date, shift_start, shift_end)}")
-    print(f"Bob available on {shift_date}? {employees[1].is_available(shift_date, shift_start, shift_end)}")
-
 
 
 
@@ -89,6 +75,20 @@ def get_fit_score(emp, shift_date, shift_start, shift_end):
     # Final fit score
     return early_bonus + late_bonus + workload_factor
 
+def main():
+    
+    employees = load_employees()
+
+
+    for emp in employees:
+        print(emp)
+
+    shift_date = "2025-03-15" # Alice should be unavailable
+    shift_start = "09:00"
+    shift_end = "17:00"
+
+    print(f"Alice available on {shift_date}? {employees[0].is_available(shift_date, shift_start, shift_end)}")
+    print(f"Bob available on {shift_date}? {employees[1].is_available(shift_date, shift_start, shift_end)}")
 
 if __name__ == "__main__":
     main()
