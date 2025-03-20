@@ -67,17 +67,13 @@ class Employee:
 
         # Check if employee already has a shift on that day
         for shift in self.schedule:
-            existing_shift_date = date.fromisoformat(shift["date"])
-            existing_start = datetime.strptime(shift["start"], "%H:%M")
-            existing_end = datetime.strptime(shift["end"], "%H:%M")
-
-            # If shift is on the same day and overlaps, return False
-            if existing_shift_date == shift_date:
-                if not (shift_end_time <= existing_start or shift_start_time >= existing_end):
-                    return False  # Overlapping shifts
+            if date.fromisoformat(shift["date"]) == shift_date:
+                "already scheduled today"
+                return False  # The employee already has a shift that day, so unavailable
 
         # Check if adding this shift exceeds max weekly hours
         if self.assigned_hours + shift_hours > self.max_hours_per_week:
+            "too many hours this week"
             return False  
 
         return True

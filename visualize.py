@@ -1,6 +1,7 @@
-import webbrowser
 import os
 import json
+import webbrowser
+import calendar
 
 def calculate_shift_hours(shift):
     """
@@ -37,6 +38,48 @@ def calculate_daily_hours(day):
     for shift in day:
         total_hours += calculate_shift_hours(shift)
     return round(total_hours, 2)
+
+def visualize_assigned_shifts(assigned_shifts, shift_date):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    employee_names = list(assigned_shifts.keys())
+    num_employees = len(employee_names)
+
+    fig, ax = plt.subplots(figsize=(12, num_employees * 0.6 + 2))
+
+    def time_to_float(time_str):
+        """Convert time in 'HH:MM' format to float (e.g., 9:00 -> 9.0)."""
+        hours, minutes = map(int, time_str.split(":"))
+        return hours + minutes / 60
+
+    y_positions = np.arange(num_employees)
+
+    for i, employee in enumerate(employee_names):
+        shifts = assigned_shifts[employee]
+        for shift in shifts:
+            start_time = time_to_float(shift["start"])
+            end_time = time_to_float(shift["end"])
+            ax.barh(y_positions[i], end_time - start_time, left=start_time, height=0.4, 
+                    color='skyblue', edgecolor='black', label="Shift" if i == 0 else "")
+
+            ax.text((start_time + end_time) / 2, y_positions[i], f"{shift['start']} - {shift['end']}", 
+                    va='center', ha='center', fontsize=10, color='black')
+
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(employee_names)
+    ax.set_xlabel("Time of Day")
+    ax.set_title(f"Assigned Shifts for {shift_date}")
+
+    x_ticks = np.arange(8, 22, 1)
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels([f"{int(t)}:00" for t in x_ticks])
+
+    ax.grid(axis='x', linestyle='--', alpha=0.7)
+
+    plt.show()
+
+################################
 
 def main(year_month, store, monthly_schedule=None, staff_needed=None):
     if monthly_schedule is None:
@@ -359,6 +402,190 @@ def main(year_month, store, monthly_schedule=None, staff_needed=None):
         file.write(html_content)
 
     webbrowser.open(f"file:///{os.path.abspath(file_path)}")
+
+
+def visualize_model3(year, month, store, assigned_shifts, staff_needed):
+    """
+    Generates an interactive HTML schedule visualization with bar-style shift visualization.
+
+    Args:
+        year (int): Year of the schedule.
+        month (int): Month of the schedule.
+        store (str): Store name or ID.
+        assigned_shifts (dict): Employee shift assignments grouped by date.
+        staff_needed (dict): Hourly staff requirements.
+    """
+    
+    # Convert staff_needed to JSON for JavaScript
+    staff_needed_json = json.dumps(staff_needed)
+
+    # Get number of days in the month
+    num_days = calendar.monthrange(year, month)[1]
+    month_name = calendar.month_name[month]
+
+    # HTML structure
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Monthly Schedule Viewer</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                background-color: #f5f5f5;
+                padding: 20px;
+            }}
+            .container {{
+                max-width: 1000px;
+                margin: auto;
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+            }}
+            .header {{
+                text-align: center;
+                background: #4CAF50;
+                color: white;
+                padding: 15px;
+                border-radius: 10px;
+            }}
+            .day-section {{
+                margin-bottom: 15px;
+                padding: 10px;
+                background: #fff;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }}
+            .day-title {{
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                padding: 10px;
+                background: #e3f2fd;
+                border-radius: 5px;
+                margin-bottom: 5px;
+            }}
+            .shifts-container {{
+                display: none;
+                padding: 10px;
+                background: #f9f9f9;
+                border-radius: 5px;
+            }}
+            .shift-row {{
+                position: relative;
+                height: 35px;
+                background-color: #e6e6e6;
+                margin-bottom: 5px;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                padding-left: 10px;
+                font-weight: bold;
+            }}
+            .shift-block, .lunch-block {{
+                position: absolute;
+                height: 100%;
+                color: white;
+                border-radius: 6px;
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }}
+            .shift-block {{ background-color: #4CAF50; }}
+            .lunch-block {{ background-color: #FF9800; }}
+            .toggle-btn {{
+                margin-top: 10px;
+                padding: 8px 16px;
+                font-size: 14px;
+                cursor: pointer;
+                background: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 5px;
+            }}
+            .toggle-btn:hover {{ background: #1976D2; }}
+            .timeline {{
+                display: flex;
+                justify-content: space-between;
+                margin-top: 10px;
+                font-size: 12px;
+                color: #555;
+            }}
+        </style>
+        <script>
+            const staffNeeded = {staff_needed_json};
+
+            function toggleSection(id) {{
+                let section = document.getElementById(id);
+                section.style.display = (section.style.display === "none" || section.style.display === "") ? "block" : "none";
+            }}
+        </script>
+    </head>
+    <body>
+    <div class="container">
+        <div class="header">
+            <h1>Schedule for Store: {store}</h1>
+            <h2>{month_name} {year}</h2>
+        </div>
+    """
+
+    # Generate the shift visualization
+    start_hour, end_hour = 8, 22  # Define the working hours range
+    total_minutes = (end_hour - start_hour) * 60  # Convert to total minutes
+
+    for day in range(1, num_days + 1):
+        date_str = f"{year}-{month:02d}-{day:02d}"
+        html_content += f"""
+        <div class="day-section">
+            <div class="day-title" onclick="toggleSection('day_{day}')">
+                {date_str} - Shifts
+            </div>
+            <div class="shifts-container" id="day_{day}">
+        """
+
+        # Display assigned shifts as bar schedule
+        if date_str in assigned_shifts:
+            for employee, shifts in assigned_shifts[date_str].items():
+                html_content += f'<div class="shift-row">{employee}</div>'
+                for shift in shifts:
+                    # Convert shift time into percentage-based width
+                    sh, sm = map(int, shift["start"].split(':'))
+                    eh, em = map(int, shift["end"].split(':'))
+                    shift_start_pct = ((sh - start_hour) * 60 + sm) / total_minutes * 100
+                    shift_width_pct = ((eh - sh) * 60 + (em - sm)) / total_minutes * 100
+
+                    html_content += f'<div class="shift-block" style="left:{shift_start_pct}%; width:{shift_width_pct}%;"></div>'
+
+                    # Add lunch break if applicable
+                    if shift['lunch'] != 'None':
+                        lh, lm = map(int, shift['lunch'].split(':'))
+                        lunch_start_pct = ((lh - start_hour) * 60 + lm) / total_minutes * 100
+                        lunch_width_pct = 30 / total_minutes * 100  # Assume 30-minute lunch
+                        html_content += f'<div class="lunch-block" style="left:{lunch_start_pct}%; width:{lunch_width_pct}%;">Lunch</div>'
+
+        else:
+            html_content += '<div>No shifts assigned for this day.</div>'
+
+        # Add a timeline below the shift visualization
+        html_content += '<div class="timeline">'
+        for hour in range(start_hour, end_hour + 1):
+            html_content += f'<div>{hour}:00</div>'
+        html_content += '</div>'
+
+        html_content += "</div></div>"
+
+    html_content += "</div></body></html>"
+
+    # Save HTML file
+    file_path = "monthly_schedule.html"
+    with open(file_path, "w") as file:
+        file.write(html_content)
+
+    # Open file in browser
+    webbrowser.open(f"file:///{os.path.abspath(file_path)}")
+
 
 if __name__ == "__main__":
     main("2025-03", "Store 101")

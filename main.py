@@ -3,8 +3,8 @@ from Model_2 import model2
 from Model_3 import model3
 import calendar
 import json
-from visualize import main as visualize_main
-from visualize import *
+from visualize import main as visualize_model_3
+from visualize2 import generate_html as visualize_schedule
 from Model_3.employees import *
 
 YEAR = 2025
@@ -69,40 +69,31 @@ def main():
         visualize=False  # Set to True if you want to visualize daily schedules
     )
 
-    # Step 3: Save monthly schedule to JSON
-    schedule_filename = f"schedule_{YEAR}_{MONTH}.json"
-    with open(schedule_filename, "w") as f:
-        json.dump(monthly_schedule, f, indent=4)
-
-    print(f"✅ Monthly schedule saved to {schedule_filename}")
-
-    # Step 4: Visualize the schedule for a specific day (optional)
-    visualize_day = f"{YEAR}-{MONTH:02d}-15"  # Example: visualize March 15
-    if visualize_day in monthly_schedule:
-        print(f"📊 Visualizing schedule for {visualize_day}...")
-        model2.visualize_schedule(monthly_schedule[visualize_day]["shifts"], monthly_staffing[visualize_day], visualize_day)
-
-    # return assigned_shifts
-
-    print("👥 Loading employee data...")
+    print(f"👥 Loading employees...")
     employees = load_employees()
-    print(f"✅ Loaded {len(employees)} employees.")
 
-    print("📅 Assigning shifts to employees...")
-    assigned_shifts = model3.assign_shifts_to_employees(shifts, employees, day)
-    print("✅ Shift assignment completed.")
+    print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
 
-    print("📊 Visualizing the final schedule...")
-    visualize_assigned_shifts(assigned_shifts, day)
+    # Step 3: Assign shifts to employees (Model 3)
+    assigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH)
 
+    # Save final schedule
+    schedule_filename = f"final_schedule_{YEAR}_{MONTH}.json"
+    with open(schedule_filename, "w") as f:
+        json.dump(assigned_shifts, f, indent=4)
+
+    print(f"✅ Final employee schedule saved to {schedule_filename}")
+
+    # Step 4: Transform schedule format for visualization
+    assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
+
+    schedule_filename = f"final_schedule_{YEAR}_{MONTH}_by_date.json"
+    with open(schedule_filename, "w") as f:
+        json.dump(assigned_shifts_by_date, f, indent=4)
+
+    # Step 5: Visualize the final schedule
+    print(f"📊 Opening schedule visualization...")
+    visualize_schedule(assigned_shifts_by_date)
 
 if __name__ == "__main__":
-    final_schedule = main()
-    print("📅 Final Schedule:")
-    for employee, shifts in final_schedule.items():
-       print(f"{employee}: {shifts}")
-
-
-
-    #this function opens up a window displaying some interactive information about the schedule that has been created
-    visualize_main(year_month= "2025 - January",store = "SE01", monthly_schedule = None,staff_needed=None)
+    main()

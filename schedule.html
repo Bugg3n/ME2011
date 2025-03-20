@@ -1,0 +1,28 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Schedule Viewer</title>
+        <style>
+            body { font-family: Arial, sans-serif; }
+            .day { cursor: pointer; padding: 10px; border: 1px solid #ccc; margin: 5px; display: inline-block; }
+            .schedule { display: none; padding: 10px; border: 1px solid #ccc; margin-top: 10px; background: #f9f9f9; }
+            .shift-bar { background: #4CAF50; color: white; padding: 5px; margin: 5px 0; width: fit-content; }
+        </style>
+    </head>
+    <body>
+        <h1>Schedule for March 2025</h1>
+        <div id="calendar">
+    <div class="day" onclick="toggleSchedule('schedule-1')">1</div><div class="day" onclick="toggleSchedule('schedule-2')">2</div></div><div id='schedules'><div id="schedule-1" class="schedule"><h2>Schedule for 2025-03-01</h2><h3>Alice</h3><div class="shift-bar">8:00 - 16:00 (Lunch: 11:00)</div><div class="shift-bar">17:00 - 20:00 (Lunch: None)</div><h3>Bob</h3><div class="shift-bar">14:00 - 22:00 (Lunch: 17:00)</div><div class="shift-bar">11:00 - 14:00 (Lunch: None)</div></div><div id="schedule-2" class="schedule"><h2>Schedule for 2025-03-02</h2><h3>Alice</h3><div class="shift-bar">8:00 - 16:00 (Lunch: 11:00)</div></div>
+        </div>
+        <script>
+            function toggleSchedule(id) {
+                document.querySelectorAll('.schedule').forEach(el => el.style.display = 'none');
+                document.getElementById(id).style.display = 'block';
+            }
+        </script>
+    </body>
+    </html>
+    
