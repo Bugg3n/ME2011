@@ -51,14 +51,17 @@ def generate_html(schedule_data):
                 end_hour, end_minute = map(int, shift["end"].split(":"))
                 lunch_hour, lunch_minute = (map(int, shift["lunch"].split(":")) if shift["lunch"] != "None" else (None, None))
                 
-                start_pos = ((start_hour * 60 + start_minute) / (24 * 60)) * 100
-                end_pos = ((end_hour * 60 + end_minute) / (24 * 60)) * 100
+                min_time = 8 * 60  # Start of timeline (8:00 AM in minutes)
+                max_time = 22 * 60  # End of timeline (10:00 PM in minutes)
+                
+                start_pos = ((start_hour * 60 + start_minute - min_time) / (max_time - min_time)) * 100
+                end_pos = ((end_hour * 60 + end_minute - min_time) / (max_time - min_time)) * 100
                 width = end_pos - start_pos
                 
                 html += f'<div class="shift" style="left:{start_pos}%; width:{width}%">{shift["start"]} - {shift["end"]}</div>'
                 
                 if lunch_hour is not None:
-                    lunch_pos = ((lunch_hour * 60 + lunch_minute) / (24 * 60)) * 100
+                    lunch_pos = ((lunch_hour * 60 + lunch_minute - min_time) / (max_time - min_time)) * 100
                     html += f'<div class="lunch" style="left:{lunch_pos}%">Lunch</div>'
             
             html += '</div></div>'
@@ -82,7 +85,7 @@ def generate_html(schedule_data):
         </script>
     </body>
     </html>
-    """
+    """    
             
     file_path = "monthly_schedule.html"
     with open(file_path, "w") as file:
