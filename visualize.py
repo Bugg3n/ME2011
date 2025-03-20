@@ -4,11 +4,17 @@ import json
 
 def calculate_shift_hours(shift):
     """
-    Calculate the duration of a shift in hours.
+    Calculate the duration of a shift in hours, excluding lunch time.
     """
     start = list(map(int, shift['start'].split(':')))
     end = list(map(int, shift['end'].split(':')))
-    return (end[0] - start[0]) + (end[1] - start[1]) / 60
+    total_hours = (end[0] - start[0]) + (end[1] - start[1]) / 60
+
+    # Subtract 1 hour if there is a lunch break
+    if shift['lunch'] != 'None':
+        total_hours -= 1  # Assuming lunch is 1 hour
+
+    return total_hours
 
 def calculate_weekly_hours(monthly_schedule):
     """
@@ -34,6 +40,7 @@ def calculate_daily_hours(day):
 
 def main(year_month, store, monthly_schedule=None, staff_needed=None):
     if monthly_schedule is None:
+        store += " - TRIAL"
         monthly_schedule = [
             [[{'start': '8:00', 'end': '16:00', 'lunch': '11:00'}, {'start': '14:00', 'end': '22:00', 'lunch': '18:00'}] for _ in range(7)],
             [[{'start': '9:00', 'end': '17:00', 'lunch': '12:00'}, {'start': '15:00', 'end': '22:00', 'lunch': 'None'}] for _ in range(7)],
