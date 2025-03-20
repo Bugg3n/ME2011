@@ -1,11 +1,42 @@
 from Model_1 import model1
 from Model_2 import model2
 from Model_3 import model3
+import calendar
+import json
 from visualize import main as visualize_main
+from visualize import *
 from Model_3.employees import *
+
+YEAR = 2025
+MONTH = 3
+STORE_ID = "1"
+SALES_CAPACITY = 12  # Customers per employee per hour
+
+
+#TODO
+# Färdigställa modell 3 
+    # 1 skala 1-10 istället för 2
+    # Input för hur gärna du vill jobba helg
+    # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt)
+    # Vecko-visualisering
+    # Implementera chefs-roll som buffert
+# Funktion för att se till att alla timmar för varje anställd uppnås
+# Om den anställda vill arbeta mer - Om det beövs fler arbtestimmar efter att allas kontrakt är uppfyllda tas timmar härifrån i proportion till arbetsgrad
+# Städa model2. Ta bort funktioner som inte används
+# Lägg till ReadMe-fil och förklaringar för varje modul
+# Fixa model 1
+# Flytta all visualisering till vizualize.py
+
+# Model 4?
+# Maximalt antal samtida anställda
+# Antalet timmar uppnås
+# Inga kollektivavtalsregler bryts
+# Utifrånd detta räkna ut minsta antal anställda med högsta möjliga anställningsgrad
+
 
 sales_capacity = 12
 customer_flow_per_hour = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
+# Här ska alla parametrar finnas
 
 
 #get data from kjell
@@ -20,32 +51,38 @@ def get_demand():
 
 
 def main():
-    """Main function to create an optimized employee schedule."""
-    
-    store_id = "1"
-    day = "2025-03-18"
-    opening_hours = ["08:00", "22:00"]
-    min_shift_hours = 3
-    max_hours_without_lunch = 5
-    max_hours_per_day = 10
-    staffing_per_hour = model1.calculate_staffing(customer_flow_per_hour, sales_capacity)
-    
-    print(model1.calculate_staffing(customer_flow_per_hour, sales_capacity))
+    """Main function to create an optimized monthly employee schedule."""
 
-    print("📊 Generating shift suggestions...")
-    staffing_per_hour = [max(1, r) for r in staffing_per_hour]
-    shifts = model2.construct_shifts(
-        opening_hours=opening_hours,
-        required_staffing = staffing_per_hour,
-        min_hours_per_day=min_shift_hours,
-        max_hours_before_lunch=max_hours_without_lunch,
-        max_hours_per_day=max_hours_per_day
+    print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
+    
+    # Step 1: Generate staffing needs (Model 1)
+    monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, SALES_CAPACITY)
+
+    print(f"📊 Generating shift schedules for {calendar.month_name[MONTH]} {YEAR}...")
+
+    # Step 2: Pass staffing data to Model 2 for scheduling
+    monthly_schedule = model2.generate_monthly_schedule(
+        year=YEAR,
+        month=MONTH,
+        store_id=STORE_ID,
+        monthly_staffing=monthly_staffing,  # Passing this instead of calling model1 inside model2
+        visualize=False  # Set to True if you want to visualize daily schedules
     )
 
-    print("✅ Shift suggestions generated.")
+    # Step 3: Save monthly schedule to JSON
+    schedule_filename = f"schedule_{YEAR}_{MONTH}.json"
+    with open(schedule_filename, "w") as f:
+        json.dump(monthly_schedule, f, indent=4)
 
-    print("📊 Visualizing shift creation from Model 2...")
-    model2.visualize_schedule(shifts, staffing_per_hour,day)
+    print(f"✅ Monthly schedule saved to {schedule_filename}")
+
+    # Step 4: Visualize the schedule for a specific day (optional)
+    visualize_day = f"{YEAR}-{MONTH:02d}-15"  # Example: visualize March 15
+    if visualize_day in monthly_schedule:
+        print(f"📊 Visualizing schedule for {visualize_day}...")
+        model2.visualize_schedule(monthly_schedule[visualize_day]["shifts"], monthly_staffing[visualize_day], visualize_day)
+
+    # return assigned_shifts
 
     print("👥 Loading employee data...")
     employees = load_employees()
@@ -56,11 +93,8 @@ def main():
     print("✅ Shift assignment completed.")
 
     print("📊 Visualizing the final schedule...")
-    #visualize_assigned_shifts(assigned_shifts, day)
+    visualize_assigned_shifts(assigned_shifts, day)
 
-
-    
-    return assigned_shifts
 
 if __name__ == "__main__":
     final_schedule = main()
