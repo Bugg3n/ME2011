@@ -101,9 +101,6 @@ class Employee:
             self.schedule = []
             self.assigned_hours = 0
 
-    if __name__ == "__main__":
-        print("This should NOT be executed during import.")
-
 def load_employees():
     """Fetch employees from the database and return a list of Employee objects."""
     

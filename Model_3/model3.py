@@ -46,11 +46,8 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month):
             monthly_hours[e.name], 
             abs(weekly_hours[e.name][week_num] - (e.max_hours_per_week / 4))
         ))
-        print("#########################################################")
-        print(len(employees))
 
         for shift in shifts:
-            print(date_str)
             shift_start, shift_end = shift["start"], shift["end"]
             
             best_employee = None
@@ -64,8 +61,6 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month):
                     best_employee = emp
 
             if best_employee:
-                print(best_employee.name)
-                print(best_fit_score)
                 # Add the date to the shift dictionary
                 shift_with_date = {
                     "date": date_str,
@@ -102,9 +97,7 @@ def get_fit_score(emp, shift_date, shift_start, shift_end):
         float: The fit score (higher is better). Returns 0 if the employee is unavailable.
     """
     if not emp.is_available(shift_date, shift_start, shift_end):
-        print("not availabe")
-        return 0
-    print("available")
+        return -10000
 
     shift_start_hour = int(shift_start.split(":")[0])
 

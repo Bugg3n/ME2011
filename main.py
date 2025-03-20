@@ -3,7 +3,7 @@ from Model_2 import model2
 from Model_3 import model3
 import calendar
 import json
-from visualize import main as visualize_model_3
+# from visualize import main as visualize_model_3
 from visualize2 import generate_html as visualize_schedule
 from Model_3.employees import *
 
@@ -14,12 +14,14 @@ SALES_CAPACITY = 12  # Customers per employee per hour
 
 
 #TODO
-# Färdigställa modell 3 
+# Färdigställa modell 3
     # 1 skala 1-10 istället för 2
     # Input för hur gärna du vill jobba helg
     # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt)
-    # Vecko-visualisering
     # Implementera chefs-roll som buffert
+    # Fixa visualiseringen och lägg till knappen för kundflöde under dagen
+    # Ta fram funktioner för statistik om anställda
+
 # Funktion för att se till att alla timmar för varje anställd uppnås
 # Om den anställda vill arbeta mer - Om det beövs fler arbtestimmar efter att allas kontrakt är uppfyllda tas timmar härifrån i proportion till arbetsgrad
 # Städa model2. Ta bort funktioner som inte används
