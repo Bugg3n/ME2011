@@ -6,17 +6,14 @@ import sqlite3
 class Employee:
     _id_counter = 1
 
-    def __init__(self, name, employment_rate, late_preference, early_preference, spread, unavailable_dates=None, manager = False):
+    def __init__(self, name, employment_rate, early_late_preference, spread, unavailable_dates=None, manager = False, overtime = False):
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Name must be a non-empty string.")
         
         if not isinstance(employment_rate, (int, float)) or not (0 <= employment_rate <= 1):
             raise ValueError("Employment rate must be a number between 0 and 1.")
-        
-        if not isinstance(late_preference, int) or not (1 <= late_preference <= 10):
-            raise ValueError("late preference must be an int between 1 and 10")
-        
-        if not isinstance(early_preference, int) or not (1 <= early_preference <= 10):
+                
+        if not isinstance(early_late_preference, int) or not (1 <= early_late_preference <= 10):
             raise ValueError("early preference must be an int between 1 and 10")
         
         if not isinstance(spread, int) or not (1 <= spread <= 10):
@@ -37,16 +34,17 @@ class Employee:
         self.name = name.strip()
         self.employment_rate = employment_rate
         self.max_hours_per_week = employment_rate * 40
-        self.late_preference = late_preference
-        self.early_preference = early_preference
+        self.early_late_preference = early_late_preference # 1 = Likes morning shifts, 10 = Likes Evening shifts.
         self.spread = spread
         self.manager = manager
         self.assigned_hours = 0
+        self.monthly_assigned_hours = 0
         self.schedule = []
         self.past_schedules = []
+        self.is_available_for_overtime = overtime
 
 
-    def is_available(self, shift_date, shift_start, shift_end):
+    def is_available(self, shift_date, shift_start, shift_end, monthly_max_hours):
         """
         Check if the employee is available on a given date and time.
         :param shift_date: A string 'YYYY-MM-DD' or a date object.
@@ -54,6 +52,8 @@ class Employee:
         :param shift_end: End time in 'HH:MM' format.
         :return: True if available, False if unavailable.
         """
+        monthly_max_hours = int(monthly_max_hours * self.employment_rate)
+
         if isinstance(shift_date, str):
             shift_date = date.fromisoformat(shift_date)
 
@@ -75,6 +75,10 @@ class Employee:
         if self.assigned_hours + shift_hours > self.max_hours_per_week:
             "too many hours this week"
             return False  
+        
+        if self.monthly_assigned_hours + shift_hours > monthly_max_hours:
+            "too many hours this month"
+            return False  
 
         return True
     
@@ -85,6 +89,7 @@ class Employee:
         shift_end_time = datetime.strptime(shift_end, "%H:%M")
         shift_hours = (shift_end_time - shift_start_time).seconds // 3600  # Convert to hours
         self.assigned_hours += shift_hours
+        self.monthly_assigned_hours += shift_hours
         self.schedule.append({
             "date": shift_date if isinstance(shift_date, str) else shift_date.strftime("%Y-%m-%d"),
             "start": shift_start,
@@ -92,14 +97,17 @@ class Employee:
         })
         
     def reset_weekly_schedule(self):
-        """Moves the current schedule to history and resets weekly counters."""
+        self.assigned_hours = 0
+
+    def reset_monthly_schedule(self):
         if self.schedule:
             self.past_schedules.append({
-                "week": datetime.now().strftime("%Y-%W"),
+                "month": datetime.now().strftime("%Y-%M"),
                 "shifts": self.schedule.copy()
             })
             self.schedule = []
-            self.assigned_hours = 0
+            self.monthly_assigned_hours = 0
+
 
 def load_employees():
     """Fetch employees from the database and return a list of Employee objects."""
@@ -107,16 +115,17 @@ def load_employees():
     conn = sqlite3.connect("employees.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT emp_id, name, employment_rate, late_preference, early_preference, spread, manager, unavailable_dates FROM employees")
+    cursor.execute("SELECT emp_id, name, employment_rate, early_late_preference, spread, manager, unavailable_dates, is_available_for_overtime FROM employees")
     rows = cursor.fetchall()
 
     employees = []
     
     for row in rows:
-        emp_id, name, employment_rate, late_preference, early_preference, spread, manager, unavailable_dates = row
+        emp_id, name, employment_rate, early_late_preference, spread, manager, unavailable_dates, is_available_for_overtime = row
 
         # Convert unavailable_dates (stored as comma-separated string) back into a list of date objects
         if unavailable_dates:
+            print(unavailable_dates)
             unavailable_dates = [date.fromisoformat(d) for d in unavailable_dates.split(",")]
         else:
             unavailable_dates = []
@@ -125,11 +134,11 @@ def load_employees():
         employee = Employee(
             name=name,
             employment_rate=employment_rate,
-            late_preference=late_preference,
-            early_preference=early_preference,
+            early_late_preference=early_late_preference,
             spread=spread,
             unavailable_dates=unavailable_dates,
-            manager=bool(manager)
+            manager=bool(manager),
+            overtime=is_available_for_overtime
         )
         
         employees.append(employee)
