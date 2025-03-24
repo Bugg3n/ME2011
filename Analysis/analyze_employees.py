@@ -17,14 +17,11 @@ def analyze_monthly_hours_from_employees(employees: list, schedule_json_path: st
     # Load schedule data
     with open(schedule_json_path, "r") as f:
         schedule = json.load(f)
-
     # Build lookup table for employment rates
     rate_lookup = {emp.name: emp.employment_rate for emp in employees}
-
     # Analyze each employee
     analysis = []
     for employee_name, shifts in schedule.items():
-        print(shifts)
         total_hours = sum(calc_hours(shift["start"], shift["end"], shift["lunch"]) for shift in shifts)
         employment_rate = rate_lookup.get(employee_name, 1.0)
         expected_hours = employment_rate * monthly_expected_fulltime
@@ -40,7 +37,7 @@ def analyze_monthly_hours_from_employees(employees: list, schedule_json_path: st
 
     return pd.DataFrame(analysis).sort_values("% of Expected Hours", ascending=False)
 
-def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expected_fulltime=170):
+def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expected_fulltime=170, unassigned_shifts=None, total_required_hours=None):
     """
     Analyzes the total scheduled hours versus the expected staffing hours.
 
@@ -75,21 +72,42 @@ def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expect
     # Calculate total expected hours based on employee employment rates
     total_expected_hours = sum(emp.employment_rate * monthly_expected_fulltime for emp in employees)
 
+
     # Compare the scheduled and expected hours
-    difference = total_scheduled_hours - total_expected_hours
+    difference = total_expected_hours - total_required_hours
     staffing_status = "Balanced"
     if difference > 0:
-        staffing_status = "Understaffed"
-    elif difference < 0:
         staffing_status = "Overstaffed"
+    elif difference < 0:
+        staffing_status = "Understaffed"
+
+    result = {
+    "total_scheduled_hours": round(total_scheduled_hours, 2),
+    "total_expected_hours": round(total_expected_hours, 2),
+    "total_required_hours": round(total_required_hours, 2),
+    "staff shortage": round(difference, 2),
+    "status": staffing_status,
+    "note": None
+    }
+
+
+    if total_required_hours is not None:
+        coverage_ratio = total_scheduled_hours / total_required_hours
+        result["store_coverage_%"] = round(coverage_ratio * 100, 1)
+
+        if coverage_ratio < 0.9:
+            result["coverage_status"] = "Under-covered"
+        elif coverage_ratio > 1.05:
+            result["coverage_status"] = "Over-covered"
+        else:
+            result["coverage_status"] = "Balanced"
+
+    if unassigned_shifts and len(unassigned_shifts) > 0:
+        result["note"] = f"{len(unassigned_shifts)} shifts were unassigned due to lack of available staff."
+
 
     # Return results as a summary dictionary
-    return {
-        "total_scheduled_hours": round(total_scheduled_hours, 2),
-        "total_expected_hours": round(total_expected_hours, 2),
-        "difference": round(difference, 2),
-        "status": staffing_status
-    }
+    return result
 
 # Helper function to calculate shift hours
 def calc_hours(start, end, lunch):
@@ -99,3 +117,15 @@ def calc_hours(start, end, lunch):
     if lunch != "None":
         hours -= 1  # fixed 1-hour lunch break
     return max(hours, 0)
+
+def calculate_total_required_hours(monthly_schedule):
+    total_required_hours = 0
+    for day in monthly_schedule.values():
+        for shift in day["shifts"]:
+            start_time = datetime.strptime(shift["start"], "%H:%M")
+            end_time = datetime.strptime(shift["end"], "%H:%M")
+            shift_hours = (end_time - start_time).seconds / 3600
+            if shift["lunch"] != "None":
+                shift_hours -= 1
+            total_required_hours += shift_hours
+    return total_required_hours

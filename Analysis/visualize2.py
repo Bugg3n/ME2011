@@ -3,7 +3,9 @@ import json
 from datetime import datetime
 import webbrowser
 
-def generate_html(schedule_data):
+def generate_html(schedule_data, unassigned_shifts = None):
+    if unassigned_shifts is None:
+        unassigned_shifts = []
     html = """
     <!DOCTYPE html>
     <html lang="en">
@@ -29,6 +31,12 @@ def generate_html(schedule_data):
         <h1>Schedule for March 2025</h1>
         <div id="calendar">
     """
+    if unassigned_shifts:
+        html += "<div style='background-color: #ffcccc; padding: 10px; border: 1px solid red;'>"
+        html += "<h2>⚠️ Unassigned Shifts</h2><ul>"
+        for shift in unassigned_shifts:
+            html += f"<li>{shift['date']}: {shift['start']} - {shift['end']}</li>"
+        html += "</ul></div>"
     
     for date in schedule_data.keys():
         day = datetime.strptime(date, "%Y-%m-%d").day
@@ -102,7 +110,7 @@ def generate_html(schedule_data):
     """
 
     file_path = "monthly_schedule.html"
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(html)
 
     print("HTML file 'schedule.html' generated successfully!")

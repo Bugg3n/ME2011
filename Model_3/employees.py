@@ -4,9 +4,8 @@ import sqlite3
 # Class for the employees.
 
 class Employee:
-    _id_counter = 1
 
-    def __init__(self, name, employment_rate, early_late_preference, spread, unavailable_dates=None, manager = False, overtime = False):
+    def __init__(self, name, employment_rate, early_late_preference, spread, unavailable_dates=None, manager = False, overtime = False, emp_id=None):
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Name must be a non-empty string.")
         
@@ -29,11 +28,9 @@ class Employee:
         if not isinstance(manager, bool):
             raise ValueError("Manager must be a boolean (True/False).")
         
-        self.emp_id = f"E{Employee._id_counter}"
-        Employee._id_counter += 1
         self.name = name.strip()
         self.employment_rate = employment_rate
-        self.max_hours_per_week = employment_rate * 40
+        self.max_hours_per_week = employment_rate * 45
         self.early_late_preference = early_late_preference # 1 = Likes morning shifts, 10 = Likes Evening shifts.
         self.spread = spread
         self.manager = manager
@@ -42,9 +39,10 @@ class Employee:
         self.schedule = []
         self.past_schedules = []
         self.is_available_for_overtime = overtime
+        self.emp_id = emp_id
 
 
-    def is_available(self, shift_date, shift_start, shift_end, monthly_max_hours):
+    def is_available(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = False):
         """
         Check if the employee is available on a given date and time.
         :param shift_date: A string 'YYYY-MM-DD' or a date object.
@@ -52,6 +50,7 @@ class Employee:
         :param shift_end: End time in 'HH:MM' format.
         :return: True if available, False if unavailable.
         """
+        if debug: print({f"Checking if {self.name} is available for the shift on {shift_date} between {shift_start} and {shift_end}"})
         monthly_max_hours = int(monthly_max_hours * self.employment_rate)
 
         if isinstance(shift_date, str):
@@ -68,32 +67,34 @@ class Employee:
         # Check if employee already has a shift on that day
         for shift in self.schedule:
             if date.fromisoformat(shift["date"]) == shift_date:
-                "already scheduled today"
+                if debug: print("already scheduled today")
                 return False  # The employee already has a shift that day, so unavailable
 
         # Check if adding this shift exceeds max weekly hours
         if self.assigned_hours + shift_hours > self.max_hours_per_week:
-            "too many hours this week"
+            if debug: print("too many hours this week")
             return False  
         
         if self.monthly_assigned_hours + shift_hours > monthly_max_hours:
-            "too many hours this month"
+
+            if debug: print("too many hours this month")
             return False  
 
         return True
     
     
-    def assign_shift(self, shift_date, shift_start, shift_end):
+    def assign_shift(self, shift):
         """Assigns a shift to the employee and updates hours."""
-        shift_start_time = datetime.strptime(shift_start, "%H:%M")
-        shift_end_time = datetime.strptime(shift_end, "%H:%M")
+        shift_start_time = datetime.strptime(shift["start"], "%H:%M")
+        shift_end_time = datetime.strptime(shift["end"], "%H:%M")
         shift_hours = (shift_end_time - shift_start_time).seconds // 3600  # Convert to hours
-        self.assigned_hours += shift_hours
-        self.monthly_assigned_hours += shift_hours
+        lunch_break = 1 if shift["lunch"] != "None" else 0
+        self.assigned_hours += shift_hours-lunch_break
+        self.monthly_assigned_hours += shift_hours-lunch_break
         self.schedule.append({
-            "date": shift_date if isinstance(shift_date, str) else shift_date.strftime("%Y-%m-%d"),
-            "start": shift_start,
-            "end": shift_end
+            "date": shift["date"] if isinstance(shift["date"], str) else shift["date"].strftime("%Y-%m-%d"),
+            "start": shift["start"],
+            "end": shift["end"]
         })
         
     def reset_weekly_schedule(self):
@@ -125,13 +126,13 @@ def load_employees():
 
         # Convert unavailable_dates (stored as comma-separated string) back into a list of date objects
         if unavailable_dates:
-            print(unavailable_dates)
             unavailable_dates = [date.fromisoformat(d) for d in unavailable_dates.split(",")]
         else:
             unavailable_dates = []
 
         # Create Employee object
         employee = Employee(
+            emp_id = emp_id,
             name=name,
             employment_rate=employment_rate,
             early_late_preference=early_late_preference,

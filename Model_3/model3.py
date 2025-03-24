@@ -2,7 +2,7 @@ from .employees import *
 from datetime import datetime, timedelta
 import calendar
 
-def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, last_month_schedule = None, max_hours = 170):
+def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, last_month_schedule = None, max_hours = 170, debug = False):
     """
     Assigns shifts to employees for a full month while ensuring:
     - Employees reach their required monthly hours.
@@ -19,6 +19,7 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
     """
 
     assigned_shifts = {emp.name: [] for emp in employees}
+    unassigned_shifts = []
 
     # Track weekly assigned hours per employee
     weekly_hours = {emp.name: [0] * 5 for emp in employees}  # 5 weeks max in a month
@@ -64,11 +65,11 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
             best_fit_score = float('-inf')
             i = 0
             for emp in employees:
-                fit_score = get_fit_score(emp, date_str, shift_start, shift_end, max_hours)
-
-                if fit_score > best_fit_score:
-                    best_fit_score = fit_score
-                    best_employee = emp
+                fit_score = get_fit_score(emp, date_str, shift_start, shift_end, max_hours, debug)
+                if fit_score:
+                    if fit_score > best_fit_score:
+                        best_fit_score = fit_score
+                        best_employee = emp
 
             if best_employee:
                 # Add the date to the shift dictionary
@@ -78,7 +79,7 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
                     "end": shift_end,
                     "lunch": shift.get("lunch", "None")  # Include lunch if available
                 }
-                best_employee.assign_shift(date_str, shift_start, shift_end)
+                best_employee.assign_shift(shift_with_date)
                 assigned_shifts[best_employee.name].append(shift_with_date)
 
                 shift_hours = (datetime.strptime(shift_end, "%H:%M") - datetime.strptime(shift_start, "%H:%M")).seconds // 3600
@@ -87,9 +88,14 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
                 weekly_hours[best_employee.name][week_num] += shift_hours
                 monthly_hours[best_employee.name] += shift_hours
             else: 
-                print("No employee available")
+                print(f"No employee available on {date_str} for shift {shift_start} - {shift_end}")
+                unassigned_shifts.append({
+                "date": date_str,
+                "start": shift_start,
+                "end": shift_end
+                })
 
-    return assigned_shifts
+    return assigned_shifts, unassigned_shifts
 
 def track_carryover_weekly_hours(employees, last_month_schedule, year, month):
     """
@@ -131,7 +137,7 @@ def track_carryover_weekly_hours(employees, last_month_schedule, year, month):
     return carryover_hours
 
 
-def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours):
+def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debug):
     """
     Calculates a fit score for assigning an employee to a shift.
     
@@ -148,8 +154,9 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours):
     Returns:
         float: The fit score (higher is better). Returns a large negative value if the employee is unavailable.
     """
-    if not emp.is_available(shift_date, shift_start, shift_end, month_max_hours):
-        return -10000  # Large negative value to strongly discourage selection
+
+    if not emp.is_available(shift_date, shift_start, shift_end, month_max_hours, debug=debug):
+        return None
 
     shift_start_hour = int(shift_start.split(":")[0])
 
@@ -210,3 +217,76 @@ def transform_schedule_format(employee_schedule, year, month):
             transformed_schedule[shift_date][employee].append(shift)
 
     return transformed_schedule
+
+
+def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, store_open="08:00", store_close="22:00", max_daily_hours=9, monthly_hours=170):
+    """
+    Extend existing shifts for employees who have not yet fulfilled their monthly contract.
+    
+    Args:
+        employees (list): List of Employee objects (with monthly_assigned_hours updated).
+        assigned_shifts_by_employee (dict): Mapping of employee names to list of assigned shifts.
+        store_open (str): Earliest time a shift can start (e.g., "08:00").
+        store_close (str): Latest time a shift can end (e.g., "22:00").
+        max_daily_hours (int): Maximum length a shift can be extended to.
+    
+    Returns:
+        dict: Updated assigned_shifts_by_employee with extended shifts.
+    """
+    store_open_time = datetime.strptime(store_open, "%H:%M")
+    store_close_time = datetime.strptime(store_close, "%H:%M")
+    
+    emp_lookup = {e.name: e for e in employees}
+
+    for emp_name, shifts in assigned_shifts_by_employee.items():
+        emp = emp_lookup[emp_name]
+        hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
+
+        for shift in shifts:
+            if hours_needed <= 0:
+                break  # Contract fulfilled
+            
+            start_time = datetime.strptime(shift["start"], "%H:%M")
+            end_time = datetime.strptime(shift["end"], "%H:%M")
+            lunch_break = 1 if shift["lunch"] != "None" else 0
+
+            # Current shift length (excluding lunch)
+            current_length = (end_time - start_time).seconds / 3600 - lunch_break
+            if emp.name == "Quinn": print(f"current length {current_length}")
+            remaining_expandable = max_daily_hours - current_length
+            if emp.name == "Quinn": print(remaining_expandable)
+
+            if remaining_expandable <= 0:
+                continue  # Already at max length
+
+            # Determine how many hours we can add (without exceeding store hours)
+            max_start_extension = int((start_time - store_open_time).seconds / 3600)
+            max_end_extension = int((store_close_time - end_time).seconds / 3600)
+
+            # Try to balance early and late extension
+            total_possible_extension = min(
+                remaining_expandable,
+                max_start_extension + max_end_extension,
+                hours_needed
+            )
+
+            # Prefer balanced extensions
+            extend_early = min(max_start_extension, total_possible_extension // 2)
+            extend_late = min(max_end_extension, total_possible_extension - extend_early)
+
+            # Apply extensions
+            new_start = start_time - timedelta(hours=extend_early)
+            new_end = end_time + timedelta(hours=extend_late)
+
+            # Update shift
+            shift["start"] = new_start.strftime("%H:%M")
+            shift["end"] = new_end.strftime("%H:%M")
+            if emp.name == "Quinn":print(shift["start"])
+            if emp.name == "Quinn":shift["end"]
+
+            # Update tracking
+            emp.monthly_assigned_hours += (extend_early + extend_late)
+            hours_needed -= (extend_early + extend_late)
+
+    return assigned_shifts_by_employee
+

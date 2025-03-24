@@ -12,12 +12,13 @@ from Analysis.analyze_employees import *
 from Model_3.employees import *
 
 YEAR = 2025
-MONTH = 1
+MONTH = 2
 STORE_ID = "1"
 SALES_CAPACITY = 12  # Customers per employee per hour
 SCHEDULE_FOLDER = "schedules"
 SALES_CAPACITY = 12
 CUSTOMER_FLOW_PER_HOUR = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
+DEBUG = True
 
 hour_per_month = {
     1: 176,
@@ -99,6 +100,8 @@ def main():
         monthly_staffing=monthly_staffing,  # Passing this instead of calling model1 inside model2
         visualize=False  # Set to True if you want to visualize daily schedules
     )
+    
+    total_required_hours = calculate_total_required_hours(monthly_schedule)
 
     print(f"👥 Loading employees...")
     employees = load_employees()
@@ -111,7 +114,16 @@ def main():
     print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
 
     # Step 3: Assign shifts to employees (Model 3)
-    assigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours=hour_per_month[MONTH])
+    assigned_shifts, unassigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours=hour_per_month[MONTH], debug = DEBUG)
+
+    assigned_shifts = model3.extend_shifts_to_fulfill_contracts(
+        employees, 
+        assigned_shifts, 
+        store_open="08:00", 
+        store_close="22:00", 
+        max_daily_hours=10,
+        monthly_hours=hour_per_month[MONTH]
+    )
 
     # Save final schedule
     schedule_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}.json")
@@ -123,22 +135,31 @@ def main():
     # Step 4: Transform schedule format for visualization
     assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
 
+
     schedule_by_date_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}_by_date.json")
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
 
+
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
-    visualize_schedule(assigned_shifts_by_date)
+    visualize_schedule(assigned_shifts_by_date, unassigned_shifts)
+
 
     df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = hour_per_month[MONTH])
     print(df)
 
-    staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = hour_per_month[MONTH])
+    staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = hour_per_month[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
     print(f"Total Scheduled Hours: {staffing_summary['total_scheduled_hours']} hours")
     print(f"Total Expected Hours: {staffing_summary['total_expected_hours']} hours")
-    print(f"Difference: {staffing_summary['difference']} hours")
+    print(f"Total Required Hours: {staffing_summary['total_required_hours']} hours")
+    print(f"Staff Balance: {staffing_summary['staff shortage']} hours")
     print(f"Staffing Status: {staffing_summary['status']}")
+    print(f"store_coverage_%: {staffing_summary['store_coverage_%']}")
+    print(f"Coverage Status: {staffing_summary['coverage_status']}")
+    print(f"Note: {staffing_summary['note']}")
+
+
 
 def get_last_month_schedule (year, month):
     last_year, last_month = get_last_month(year, month)
