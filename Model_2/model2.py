@@ -252,6 +252,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
                     extended_gain = transaction_gain([1] * (end_idx - start_idx + 1), required_staffing, current_staffing)
 
                     if extended_gain > best_gain:
+
                         best_gain = extended_gain
                         best_option = ("extend", j)
 
@@ -269,6 +270,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
 
             # Apply the best option
             if best_option[0] == "extend":
+                input("exteeeend")
                 shifts[best_option[1]]["end"] = f"{int(shifts[best_option[1]]['end'].split(':')[0]) + 1}:00"
             else:
                 shifts.append(best_option[1])
