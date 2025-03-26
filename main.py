@@ -1,7 +1,6 @@
 from Model_1 import model1
 from Model_2 import model2
 from Model_3 import model3
-from Analysis import analyze_employees
 import os
 import calendar
 import json
@@ -18,9 +17,12 @@ SALES_CAPACITY = 12  # Customers per employee per hour
 SCHEDULE_FOLDER = "schedules"
 SALES_CAPACITY = 12
 CUSTOMER_FLOW_PER_HOUR = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
-DEBUG = True
+DEBUG = False
+STORE_OPEN = "8:00"
+STORE_CLOSE = "22:00"
+MAX_DAILY_HOURS = 10
 
-hour_per_month = {
+HOURS_PER_MONTH = {
     1: 176,
     2: 160,
     3: 168,
@@ -38,14 +40,10 @@ hour_per_month = {
 
 #TODO
 # Färdigställa modell 3
-    # 1 skala 1-10 istället för 2
     # Input för hur gärna du vill jobba helg
     # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt)
     # Implementera chefs-roll som buffert
-    # Fixa visualiseringen och lägg till knappen för kundflöde under dagen
-    # Ta fram funktioner för statistik om anställda
 
-# Funktion för att se till att alla timmar för varje anställd uppnås
 # Om den anställda vill arbeta mer - Om det beövs fler arbtestimmar efter att allas kontrakt är uppfyllda tas timmar härifrån i proportion till arbetsgrad
 # Städa model2. Ta bort funktioner som inte används
 # Lägg till ReadMe-fil och förklaringar för varje modul
@@ -57,11 +55,6 @@ hour_per_month = {
 # Antalet timmar uppnås
 # Inga kollektivavtalsregler bryts
 # Utifrånd detta räkna ut minsta antal anställda med högsta möjliga anställningsgrad
-
-
-
-
-# Här ska alla parametrar finnas
 
 
 #get data from kjell
@@ -114,15 +107,27 @@ def main():
     print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
 
     # Step 3: Assign shifts to employees (Model 3)
-    assigned_shifts, unassigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours=hour_per_month[MONTH], debug = DEBUG)
+    assigned_shifts, unassigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours=HOURS_PER_MONTH[MONTH], debug = DEBUG)
+    
+    assigned_shifts, unassigned_shifts = model3.cover_remaining_shifts(
+    assigned_shifts,
+    unassigned_shifts,
+    employees,
+    year=YEAR,
+    month=MONTH,
+    store_open=STORE_OPEN,
+    store_close=STORE_CLOSE,
+    max_daily_hours=MAX_DAILY_HOURS,
+    monthly_hours=HOURS_PER_MONTH[MONTH]
+    )
 
     assigned_shifts = model3.extend_shifts_to_fulfill_contracts(
         employees, 
         assigned_shifts, 
-        store_open="08:00", 
-        store_close="22:00", 
-        max_daily_hours=10,
-        monthly_hours=hour_per_month[MONTH]
+        store_open=STORE_OPEN,
+        store_close=STORE_CLOSE,
+        max_daily_hours=MAX_DAILY_HOURS,
+        monthly_hours=HOURS_PER_MONTH[MONTH]
     )
 
     # Save final schedule
@@ -146,10 +151,10 @@ def main():
     visualize_schedule(assigned_shifts_by_date, unassigned_shifts)
 
 
-    df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = hour_per_month[MONTH])
+    df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
     print(df)
 
-    staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = hour_per_month[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
+    staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
     print(f"Total Scheduled Hours: {staffing_summary['total_scheduled_hours']} hours")
     print(f"Total Expected Hours: {staffing_summary['total_expected_hours']} hours")
     print(f"Total Required Hours: {staffing_summary['total_required_hours']} hours")

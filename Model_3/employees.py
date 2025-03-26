@@ -28,6 +28,8 @@ class Employee:
         if not isinstance(manager, bool):
             raise ValueError("Manager must be a boolean (True/False).")
         
+
+        self.weekly_sales_hours = None
         self.name = name.strip()
         self.employment_rate = employment_rate
         self.max_hours_per_week = employment_rate * 45
@@ -40,9 +42,18 @@ class Employee:
         self.past_schedules = []
         self.is_available_for_overtime = overtime
         self.emp_id = emp_id
+    
+        if self.manager:
+            self.set_sales_hour(5)
 
+    def set_sales_hour(self, weekly_sales_hours): # Will be used to have the manager step in if needed
+        if self.manager:
+            self.weekly_sales_hours = weekly_sales_hours
+            return True
+        else: 
+            return False
 
-    def is_available(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = False):
+    def is_available(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = False, overtime = False):
         """
         Check if the employee is available on a given date and time.
         :param shift_date: A string 'YYYY-MM-DD' or a date object.
@@ -51,7 +62,10 @@ class Employee:
         :return: True if available, False if unavailable.
         """
         if debug: print({f"Checking if {self.name} is available for the shift on {shift_date} between {shift_start} and {shift_end}"})
-        monthly_max_hours = int(monthly_max_hours * self.employment_rate)
+        if overtime:
+            monthly_max_hours = monthly_max_hours
+        else:
+            monthly_max_hours = int(monthly_max_hours * self.employment_rate)
 
         if isinstance(shift_date, str):
             shift_date = date.fromisoformat(shift_date)
@@ -81,6 +95,11 @@ class Employee:
             return False  
 
         return True
+    
+    def is_available_for_overtime(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = False):
+        if self.is_available_for_overtime:
+            return self.is_available(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = debug, overtime = True)
+        return False
     
     
     def assign_shift(self, shift):

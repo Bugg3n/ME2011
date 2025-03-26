@@ -3,6 +3,7 @@ from employees import Employee
 from datetime import date
 
 employees = [
+    Employee(name="BF", employment_rate=1.0, early_late_preference=5, spread=5, unavailable_dates=[], overtime=False, manager=True),
     Employee(name="Alice", employment_rate=1.0, early_late_preference=5, spread=5, unavailable_dates=["2025-03-15", "2025-03-22"], overtime=True),
     Employee(name="Bob", employment_rate=0.8, early_late_preference=8, spread=4, unavailable_dates=[date(2025, 3, 17)]),
     Employee(name="Ceasar", employment_rate=0.6, early_late_preference=7, spread=3, unavailable_dates=[date(2025, 3, 18)], overtime=True),

@@ -65,11 +65,12 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
             best_fit_score = float('-inf')
             i = 0
             for emp in employees:
-                fit_score = get_fit_score(emp, date_str, shift_start, shift_end, max_hours, debug)
-                if fit_score:
-                    if fit_score > best_fit_score:
-                        best_fit_score = fit_score
-                        best_employee = emp
+                if not emp.manager:
+                    fit_score = get_fit_score(emp, date_str, shift_start, shift_end, max_hours, debug)
+                    if fit_score:
+                        if fit_score > best_fit_score:
+                            best_fit_score = fit_score
+                            best_employee = emp
 
             if best_employee:
                 # Add the date to the shift dictionary
@@ -96,6 +97,92 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
                 })
 
     return assigned_shifts, unassigned_shifts
+
+def cover_remaining_shifts(assigned_shifts, unassigned_shifts, employees, year, month, store_open, store_close, max_daily_hours, monthly_hours):
+    """
+    Attempts to cover unassigned shifts using available employees, managers, or overtime.
+    """
+
+    store_open_time = datetime.strptime(store_open, "%H:%M")
+    store_close_time = datetime.strptime(store_close, "%H:%M")
+
+    still_unassigned = []
+
+    for shift in unassigned_shifts:
+        shift_date = shift["date"]
+        start_time = datetime.strptime(shift["start"], "%H:%M")
+        end_time = datetime.strptime(shift["end"], "%H:%M")
+        shift_hours = (end_time - start_time).seconds // 3600
+
+        assigned = False
+
+        # 1️⃣ Try to extend existing shifts of under-scheduled employees
+        under_scheduled = [e for e in employees if e.monthly_assigned_hours < monthly_hours * e.employment_rate]
+        for emp in under_scheduled:
+            for existing_shift in assigned_shifts.get(emp.name, []):
+                if existing_shift["date"] == shift_date:
+                    existing_start = datetime.strptime(existing_shift["start"], "%H:%M")
+                    existing_end = datetime.strptime(existing_shift["end"], "%H:%M")
+
+                    # Try extending end
+                    if existing_end == start_time and (existing_end + timedelta(hours=shift_hours)) <= store_close_time:
+                        existing_shift["end"] = end_time.strftime("%H:%M")
+                        emp.monthly_assigned_hours += shift_hours
+                        assigned = True
+                        print("Made a shift end later")
+                        break
+                    # Try extending start
+                    elif existing_start == end_time and (existing_start - timedelta(hours=shift_hours)) >= store_open_time:
+                        existing_shift["start"] = start_time.strftime("%H:%M")
+                        emp.monthly_assigned_hours += shift_hours
+                        assigned = True
+                        print("Made a shift start earlier")
+                        break
+            if assigned:
+                break
+
+        if assigned:
+            continue
+
+        # 2️⃣ Try assigning a manager with remaining sales hours
+        for emp in employees:
+            if emp.manager and hasattr(emp, "weekly_sales_hours") and emp.weekly_sales_hours >= shift_hours:
+                shift = {
+                    "date": shift_date,
+                    "start": shift["start"],
+                    "end":  shift["end"],
+                    "lunch": shift.get("lunch", "None")  # Include lunch if available
+                }
+                emp.assign_shift(shift)
+                assigned_shifts[emp.name].append(shift)
+                emp.weekly_sales_hours -= shift_hours
+                emp.monthly_assigned_hours += shift_hours
+                assigned = True
+                break
+
+        if assigned:
+            continue
+
+        # 3️⃣ Try assigning someone available for overtime
+        for emp in employees:
+            if emp.is_available_for_overtime(shift_date, shift["start"], shift["end"], monthly_hours):
+                shift = {
+                    "date": shift_date,
+                    "start": shift["start"],
+                    "end":  shift["end"],
+                    "lunch": shift.get("lunch", "None")  # Include lunch if available
+                }
+                emp.assign_shift(shift)
+                assigned_shifts[emp.name].append(shift)
+                emp.monthly_assigned_hours += shift_hours
+                assigned = True
+                break
+
+        if not assigned:
+            print(f"⚠️ Could not cover shift on {shift_date} from {shift['start']} to {shift['end']}")
+            still_unassigned.append(shift)
+
+    return assigned_shifts, still_unassigned
 
 def track_carryover_weekly_hours(employees, last_month_schedule, year, month):
     """
@@ -240,53 +327,54 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
 
     for emp_name, shifts in assigned_shifts_by_employee.items():
         emp = emp_lookup[emp_name]
-        hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
+        if not emp.manager:
+            hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
 
-        for shift in shifts:
-            if hours_needed <= 0:
-                break  # Contract fulfilled
-            
-            start_time = datetime.strptime(shift["start"], "%H:%M")
-            end_time = datetime.strptime(shift["end"], "%H:%M")
-            lunch_break = 1 if shift["lunch"] != "None" else 0
+            for shift in shifts:
+                if hours_needed <= 0:
+                    break  # Contract fulfilled
+                
+                start_time = datetime.strptime(shift["start"], "%H:%M")
+                end_time = datetime.strptime(shift["end"], "%H:%M")
+                lunch_break = 1 if shift["lunch"] != "None" else 0
 
-            # Current shift length (excluding lunch)
-            current_length = (end_time - start_time).seconds / 3600 - lunch_break
-            if emp.name == "Quinn": print(f"current length {current_length}")
-            remaining_expandable = max_daily_hours - current_length
-            if emp.name == "Quinn": print(remaining_expandable)
+                # Current shift length (excluding lunch)
+                current_length = (end_time - start_time).seconds / 3600 - lunch_break
+                if emp.name == "Quinn": print(f"current length {current_length}")
+                remaining_expandable = max_daily_hours - current_length
+                if emp.name == "Quinn": print(remaining_expandable)
 
-            if remaining_expandable <= 0:
-                continue  # Already at max length
+                if remaining_expandable <= 0:
+                    continue  # Already at max length
 
-            # Determine how many hours we can add (without exceeding store hours)
-            max_start_extension = int((start_time - store_open_time).seconds / 3600)
-            max_end_extension = int((store_close_time - end_time).seconds / 3600)
+                # Determine how many hours we can add (without exceeding store hours)
+                max_start_extension = int((start_time - store_open_time).seconds / 3600)
+                max_end_extension = int((store_close_time - end_time).seconds / 3600)
 
-            # Try to balance early and late extension
-            total_possible_extension = min(
-                remaining_expandable,
-                max_start_extension + max_end_extension,
-                hours_needed
-            )
+                # Try to balance early and late extension
+                total_possible_extension = min(
+                    remaining_expandable,
+                    max_start_extension + max_end_extension,
+                    hours_needed
+                )
 
-            # Prefer balanced extensions
-            extend_early = min(max_start_extension, total_possible_extension // 2)
-            extend_late = min(max_end_extension, total_possible_extension - extend_early)
+                # Prefer balanced extensions
+                extend_early = min(max_start_extension, total_possible_extension // 2)
+                extend_late = min(max_end_extension, total_possible_extension - extend_early)
 
-            # Apply extensions
-            new_start = start_time - timedelta(hours=extend_early)
-            new_end = end_time + timedelta(hours=extend_late)
+                # Apply extensions
+                new_start = start_time - timedelta(hours=extend_early)
+                new_end = end_time + timedelta(hours=extend_late)
 
-            # Update shift
-            shift["start"] = new_start.strftime("%H:%M")
-            shift["end"] = new_end.strftime("%H:%M")
-            if emp.name == "Quinn":print(shift["start"])
-            if emp.name == "Quinn":shift["end"]
+                # Update shift
+                shift["start"] = new_start.strftime("%H:%M")
+                shift["end"] = new_end.strftime("%H:%M")
+                if emp.name == "Quinn":print(shift["start"])
+                if emp.name == "Quinn":shift["end"]
 
-            # Update tracking
-            emp.monthly_assigned_hours += (extend_early + extend_late)
-            hours_needed -= (extend_early + extend_late)
+                # Update tracking
+                emp.monthly_assigned_hours += (extend_early + extend_late)
+                hours_needed -= (extend_early + extend_late)
 
     return assigned_shifts_by_employee
 
