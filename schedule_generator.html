@@ -1,0 +1,175 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue-Based Shift Scheduler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #e0e7ff;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --warning: #f8961e;
+            --danger: #f94144;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: #f5f7fa;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Input Form Styling */
+        .input-form {
+            background: white;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        button:hover {
+            background: var(--secondary);
+        }
+        
+        /* Rest of your existing CSS (timeline, shifts, etc.) */
+        /* ... (Include all previous CSS here) ... */
+    </style>
+</head>
+<body>
+    <h1>Queue-Based Shift Scheduler</h1>
+    
+    <!-- Input Form -->
+    <div class="input-form">
+        <h2>Schedule Parameters</h2>
+        <div class="form-group">
+            <label for="serviceRate">Service Rate (customers/hour):</label>
+            <input type="number" id="serviceRate" value="10">
+        </div>
+        <div class="form-group">
+            <label for="arrivalRate">Arrival Rate (customers/hour):</label>
+            <input type="number" id="arrivalRate" value="8">
+        </div>
+        <div class="form-group">
+            <label for="maxStaff">Max Staff Available:</label>
+            <input type="number" id="maxStaff" value="5">
+        </div>
+        <button onclick="calculateSchedule()">Generate Schedule</button>
+    </div>
+    
+    <!-- Schedule Visualization -->
+    <div id="scheduleContainer">
+        <!-- Dynamically populated by JavaScript -->
+    </div>
+
+    <script>
+        // Your queueing theory calculation (replace with your actual logic)
+        function calculateOptimalShifts(serviceRate, arrivalRate, maxStaff) {
+            // Example: M/M/c queue model
+            const utilization = arrivalRate / (serviceRate * maxStaff);
+            const shiftHours = Math.ceil(arrivalRate / (serviceRate * utilization * 0.8));
+            
+            // Mock generated shifts (replace with your real calculation)
+            return {
+                "2025-03-01": {
+                    "Alice": [{"start": "8:00", "end": "16:00", "lunch": "12:00"}],
+                    "Bob": [{"start": "12:00", "end": "20:00", "lunch": "15:00"}]
+                }
+            };
+        }
+
+        // Generate the HTML for the schedule
+        function renderSchedule(scheduleData) {
+            let html = `
+                <h2>Generated Schedule</h2>
+                <div class="calendar" id="calendar"></div>
+                <div id="schedules"></div>
+            `;
+            
+            document.getElementById("scheduleContainer").innerHTML = html;
+            
+            // Render days
+            for (const date in scheduleData) {
+                const day = new Date(date).getDate();
+                document.getElementById("calendar").innerHTML += 
+                    `<div class="day" onclick="toggleSchedule('schedule-${day}')">${day}</div>`;
+            }
+            
+            // Render schedules
+            for (const [date, shifts] of Object.entries(scheduleData)) {
+                const day = new Date(date).getDate();
+                let scheduleHtml = `
+                    <div id="schedule-${day}" class="schedule">
+                        <h3>${date}</h3>
+                        <div class="timeline-container"></div>
+                        <!-- Add timeline and shift rendering logic -->
+                    </div>
+                `;
+                document.getElementById("schedules").innerHTML += scheduleHtml;
+            }
+        }
+
+        // Main function triggered by the button
+        function calculateSchedule() {
+            const serviceRate = parseFloat(document.getElementById("serviceRate").value);
+            const arrivalRate = parseFloat(document.getElementById("arrivalRate").value);
+            const maxStaff = parseInt(document.getElementById("maxStaff").value);
+            
+            // Calculate shifts using your queueing theory
+            const scheduleData = calculateOptimalShifts(serviceRate, arrivalRate, maxStaff);
+            
+            // Update the visualization
+            renderSchedule(scheduleData);
+        }
+
+        // Initialize with a default schedule
+        window.onload = function() {
+            calculateSchedule();
+        };
+    </script>
+</body>
+</html>
+    

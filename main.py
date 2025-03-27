@@ -72,16 +72,17 @@ def ensure_schedule_folder():
     if not os.path.exists(SCHEDULE_FOLDER):
         os.makedirs(SCHEDULE_FOLDER)
 
-
-def main():
+s
+#a function to create a schedule
+def create_schedule(Params = None):
     """Main function to create an optimized monthly employee schedule."""
-
     ensure_schedule_folder()
 
     print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
     
     # Step 1: Generate staffing needs (Model 1)
     monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, SALES_CAPACITY)
+
 
     print(f"📊 Generating shift schedules for {calendar.month_name[MONTH]} {YEAR}...")
 
@@ -145,7 +146,7 @@ def main():
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
 
-
+    
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
     visualize_schedule(assigned_shifts_by_date, unassigned_shifts)
@@ -165,6 +166,12 @@ def main():
     print(f"Note: {staffing_summary['note']}")
 
 
+def main():
+    """Main function to create an optimized monthly employee schedule."""
+
+    create_schedule()
+
+    
 
 def get_last_month_schedule (year, month):
     last_year, last_month = get_last_month(year, month)
