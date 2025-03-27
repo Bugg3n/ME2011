@@ -27,7 +27,7 @@ def calculate_staffing(customer_flow_per_hour, sales_capacity):
     return staffing_per_hour
 
 
-def generate_monthly_staffing(year, month, store_id, sales_capacity=12):
+def generate_monthly_staffing(year, month, store_id, sales_capacity=12,average_service_time=3.0,target_wait_time=5.0):
     """
     Generates the required staffing per hour for each day in a given month.
     """
