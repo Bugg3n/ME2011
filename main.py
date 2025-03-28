@@ -77,10 +77,11 @@ def ensure_schedule_folder():
 def create_schedule(web_mode=False, web_params = None):
     """Main function to create an optimized monthly employee schedule."""
     ensure_schedule_folder()
-
-    sales_capacity = web_params.get('sales_capacity', SALES_CAPACITY)
-    average_service_time = web_params.get('average_service_time', 10)
-    target_wait_time = web_params.get('target_wait_time', 5)
+    sales_capacity = SALES_CAPACITY
+    if web_params:
+        sales_capacity = web_params.get('sales_capacity', SALES_CAPACITY)
+        average_service_time = web_params.get('average_service_time', 10)
+        target_wait_time = web_params.get('target_wait_time', 5)
 
     print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
     
@@ -191,10 +192,11 @@ def get_last_month(year, month):
     return last_year, last_month
 
 if __name__ == "__main__":
-    os.environ['WEB_MODE'] = '1'
+    os.environ['WEB_MODE'] = "0"
     
-    print("Starting server at http://localhost:8000")
-    print("Browser should open automatically...")
     
     # Start server (which will now auto-open browser)
+    create_schedule()
+    print("Starting server at http://localhost:8000")
+    print("Browser should open automatically...")
     run_server()

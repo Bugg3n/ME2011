@@ -18,27 +18,197 @@ def calculate_worked_hours(shifts):
     return round(total_seconds / 3600, 2)
 
 def generate_html(schedule_data, unassigned_shifts=None):
+    print("in generate html")
     if unassigned_shifts is None:
         unassigned_shifts = []
     
     # Generate just the schedule visualization content (without controls)
-    schedule_content = generate_schedule_content(schedule_data, unassigned_shifts)
+    schedule_content = generate_schedule_content(schedule_data, unassigned_shifts) # Dynamic content
+    print("schedule generated")
     
     # In web mode, return ONLY the dynamic content
-    if os.environ.get('WEB_MODE'):
+    if os.environ.get('WEB_MODE') == "1":
+        print("In webmode. Returning")
         return schedule_content
     
-    # For standalone mode, return full HTML page
+    # For standalone mode, return full HTML page. Static content
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Work Schedule Viewer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        /* [All your existing CSS styles remain exactly the same] */
-    </style>
+    body {{
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f7f7f7;
+        color: #333;
+    }}
+
+    .control-panel {{
+        background: #ffffff;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid #ccc;
+        margin-bottom: 1rem;
+    }}
+
+    .param-group {{
+        margin-bottom: 1rem;
+    }}
+
+    .param-group label {{
+        display: block;
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+    }}
+
+    input[type="number"] {{
+        width: 100%;
+        padding: 0.4rem;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+    }}
+
+    button {{
+        background: #007bff;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+    }}
+
+    button:hover {{
+        background: #0056b3;
+    }}
+
+    .calendar {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 1rem;
+    }}
+
+    .calendar .day {{
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }}
+
+    .calendar .day:hover {{
+        background: #e0e0e0;
+    }}
+
+    .schedule {{
+        display: none;
+        padding: 1rem;
+        background: white;
+        margin: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }}
+
+    .timeline-container {{
+        margin-top: 1rem;
+        border-left: 1px solid #ccc;
+        padding-left: 1rem;
+    }}
+
+    .employee-row {{
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }}
+
+    .employee-name {{
+        width: 120px;
+        font-weight: 600;
+    }}
+
+    .timeline {{
+        position: relative;
+        flex: 1;
+        height: 20px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }}
+
+    .shift {{
+        position: absolute;
+        height: 100%;
+        background: #007bff;
+        border-radius: 4px;
+    }}
+
+    .lunch {{
+        position: absolute;
+        height: 100%;
+        background: #cccccc;
+        opacity: 0.8;
+    }}
+
+    .shift-tooltip {{
+        position: absolute;
+        top: -20px;
+        left: 0;
+        font-size: 0.75rem;
+        color: #333;
+    }}
+
+    .hour-marker {{
+        position: absolute;
+        height: 10px;
+        width: 1px;
+        background: #999;
+        bottom: -5px;
+    }}
+
+    .hour-label {{
+        position: absolute;
+        bottom: -20px;
+        font-size: 0.75rem;
+        transform: translateX(-50%);
+    }}
+
+    .shift-details {{
+        margin-top: 1rem;
+    }}
+
+    .shift-entry {{
+        margin-bottom: 0.8rem;
+    }}
+
+    .stats-card {{
+        margin-top: 1rem;
+        background: #f2f2f2;
+        padding: 0.8rem;
+        border-radius: 8px;
+    }}
+
+    .stats-value {{
+        font-size: 1.2rem;
+        font-weight: bold;
+    }}
+
+    .stats-label {{
+        font-size: 0.9rem;
+        color: #666;
+    }}
+</style>
+
+
 </head>
 <body>
     <div id="staticContent">
@@ -166,13 +336,12 @@ def generate_html(schedule_data, unassigned_shifts=None):
 </html>"""
     
     file_path = "monthly_schedule.html"
+    print("Creating file monthly schedule")
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(html)
     
     # Only open in browser if not in web mode
-    if not os.environ.get('WEB_MODE'):
-        webbrowser.open(f"file:///{os.path.abspath(file_path)}")
-
+    print("In webmode")
     return html
 
 def generate_schedule_content(schedule_data, unassigned_shifts=None):

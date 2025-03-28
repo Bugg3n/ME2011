@@ -447,8 +447,12 @@ def generate_monthly_schedule(year, month, store_id, monthly_staffing = None,
             "shifts": daily_shifts
         }
 
-        with open(f"web_output/{month}/model2_shifts_{date_str}.json", "w") as f:
+        output_folder = f"web_output/{month}"
+        os.makedirs(output_folder, exist_ok=True)
+
+        with open(os.path.join(output_folder, f"model2_shifts_{date_str}.json"), "w") as f:
             json.dump(daily_shifts, f, indent=4)
+
 
     return monthly_schedule
 
