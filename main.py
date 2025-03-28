@@ -134,16 +134,18 @@ def create_schedule(web_mode=False, web_params = None):
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
 
-    
-    # Step 5: Visualize the final schedule
-    print(f"📊 Opening schedule visualization...")
-    generate_html(assigned_shifts_by_date, unassigned_shifts)
-    
-
     df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
     print(df)
-
     staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
+
+    # Step 5: Visualize the final schedule
+    print(f"📊 Opening schedule visualization...")
+    generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary)
+    
+
+    
+
+    
     print(f"Total Scheduled Hours: {staffing_summary['total_scheduled_hours']} hours")
     print(f"Total Expected Hours: {staffing_summary['total_expected_hours']} hours")
     print(f"Total Required Hours: {staffing_summary['total_required_hours']} hours")
