@@ -266,6 +266,7 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
     store_open_time = datetime.strptime(store_open, "%H:%M")
     store_close_time = datetime.strptime(store_close, "%H:%M")
     emp_lookup = {e.name: e for e in employees}
+    still_needs_extension = []
 
     for emp_name, shifts in assigned_shifts_by_employee.items():
         emp = emp_lookup[emp_name]
@@ -278,11 +279,71 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
         for shift in shifts:
             if hours_needed <= 0:
                 break
-            hours_added = extend_shift_logic(shift, store_open_time, store_close_time, hours_needed, max_daily_hours)
+            extend_early, extend_late = extend_shift_logic(shift, store_open_time, store_close_time, hours_needed, max_daily_hours)
+            hours_added = extend_early + extend_late
+            if hours_added == 0:
+                continue
+            shift = apply_extension(shift, extend_early, extend_late)
             emp.monthly_assigned_hours += hours_added
             hours_needed -= hours_added
 
+        if hours_needed > 0:
+            still_needs_extension.append((emp, shifts))
+
+    for emp, shifts in still_needs_extension:
+        print(f"Still need extension accessed: {emp}")
+        hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
+        print(f"hours needed: {hours_needed}")
+        for shift in shifts:
+            if hours_needed <= 0:
+                break
+            result = extend_shift_with_lunch(shift, store_open_time, store_close_time, hours_needed, max_daily_hours)
+            if result is not None:
+                extend_early, extend_late, lunch_time = result
+                shift = apply_extension(shift, extend_early, extend_late, lunch_time)
+                hours_added = extend_early + extend_late
+                emp.monthly_assigned_hours += hours_added
+                hours_needed -= hours_added
+
     return assigned_shifts_by_employee
+
+def extend_shift_with_lunch(shift, store_open_time, store_close_time, hours_needed, max_daily_hours):
+    start_time = datetime.strptime(shift["start"], "%H:%M")
+    end_time = datetime.strptime(shift["end"], "%H:%M")
+    current_length = (end_time - start_time).seconds / 3600
+
+    if current_length > 5:
+        print("already more than 5 hour shift")
+        return None  # Skip long shifts already
+
+    max_start_extension = int((start_time - store_open_time).seconds / 3600)
+    max_end_extension = int((store_close_time - end_time).seconds / 3600)
+    remaining_expandable = max_daily_hours - current_length
+
+    required_extension = max(4, min(remaining_expandable, hours_needed))
+    total_with_lunch = required_extension + 1
+
+    if max_end_extension >= total_with_lunch:
+        lunch_time = end_time.strftime("%H:%M")
+        return 0, required_extension, lunch_time
+    elif max_start_extension >= total_with_lunch:
+        lunch_time = (start_time - timedelta(hours=1)).strftime("%H:%M")
+        return required_extension, 0, lunch_time
+    return None
+
+def apply_extension(shift, extend_early, extend_late, lunch_time=None):
+    start_time = datetime.strptime(shift["start"], "%H:%M")
+    end_time = datetime.strptime(shift["end"], "%H:%M")
+    new_start = start_time - timedelta(hours=extend_early)
+    new_end = end_time + timedelta(hours=extend_late)
+
+    shift["start"] = new_start.strftime("%H:%M")
+    shift["end"] = new_end.strftime("%H:%M")
+
+    if lunch_time:
+        shift["lunch"] = lunch_time
+
+    return shift
 
 def extend_shift_logic(shift, store_open_time, store_close_time, hours_needed, max_daily_hours):
     start_time = datetime.strptime(shift["start"], "%H:%M")
@@ -303,12 +364,7 @@ def extend_shift_logic(shift, store_open_time, store_close_time, hours_needed, m
         extend_early = min(max_start_extension, max_total_extension // 2)
         extend_late = min(max_end_extension, max_total_extension - extend_early)
 
-    new_start = start_time - timedelta(hours=extend_early)
-    new_end = end_time + timedelta(hours=extend_late)
-    shift["start"] = new_start.strftime("%H:%M")
-    shift["end"] = new_end.strftime("%H:%M")
-
-    return extend_early + extend_late
+    return extend_early, extend_late
 
 
 def shift_duration(shift):
