@@ -425,7 +425,7 @@ def generate_monthly_schedule(year, month, store_id, monthly_staffing = None,
     for day in range(1, num_days + 1):
         date_str = f"{year}-{month:02d}-{day:02d}"
 
-        print(f"📅 Generating shifts for {date_str}...")
+        #print(f"📅 Generating shifts for {date_str}...")
 
         # Get staffing per hour for this day from input data
         staffing_per_hour = monthly_staffing.get(date_str, [])
