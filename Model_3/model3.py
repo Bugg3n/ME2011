@@ -378,3 +378,36 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
 
     return assigned_shifts_by_employee
 
+def create_schedule(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours, debug, store_open, store_close, max_daily_hours):
+    assigned_shifts, unassigned_shifts = assign_shifts_to_employees_monthly(
+        monthly_schedule, 
+        employees, 
+        YEAR, 
+        MONTH, 
+        last_month_schedule, 
+        max_hours, 
+        debug
+    )
+    
+    assigned_shifts, unassigned_shifts = cover_remaining_shifts(
+        assigned_shifts,
+        unassigned_shifts,
+        employees,
+        year=YEAR,
+        month=MONTH,
+        store_open=store_open,
+        store_close=store_close,
+        max_daily_hours=max_daily_hours,
+        monthly_hours=max_hours
+    )
+
+    assigned_shifts = extend_shifts_to_fulfill_contracts(
+        employees, 
+        assigned_shifts, 
+        store_open=store_open,
+        store_close=store_close,
+        max_daily_hours=max_daily_hours,
+        monthly_hours=max_hours
+    )
+
+    return assigned_shifts, unassigned_shifts

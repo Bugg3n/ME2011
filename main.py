@@ -107,29 +107,18 @@ def create_schedule(web_mode=False, web_params = None):
     print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
 
     # Step 3: Assign shifts to employees (Model 3)
-    assigned_shifts, unassigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours=HOURS_PER_MONTH[MONTH], debug = DEBUG)
-    
-    assigned_shifts, unassigned_shifts = model3.cover_remaining_shifts(
-    assigned_shifts,
-    unassigned_shifts,
-    employees,
-    year=YEAR,
-    month=MONTH,
-    store_open=STORE_OPEN,
-    store_close=STORE_CLOSE,
-    max_daily_hours=MAX_DAILY_HOURS,
-    monthly_hours=HOURS_PER_MONTH[MONTH]
-    )
-
-    assigned_shifts = model3.extend_shifts_to_fulfill_contracts(
+    assigned_shifts, unassigned_shifts = model3.create_schedule(
+        monthly_schedule, 
         employees, 
-        assigned_shifts, 
-        store_open=STORE_OPEN,
-        store_close=STORE_CLOSE,
-        max_daily_hours=MAX_DAILY_HOURS,
-        monthly_hours=HOURS_PER_MONTH[MONTH]
-    )
-
+        YEAR, MONTH, 
+        last_month_schedule, 
+        max_hours=HOURS_PER_MONTH[MONTH], 
+        debug = DEBUG,
+        store_open = STORE_OPEN, 
+        store_close = STORE_CLOSE, 
+        max_daily_hours = MAX_DAILY_HOURS, 
+        )
+    
     # Save final schedule
     schedule_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}.json")
     with open(schedule_filename, "w") as f:
