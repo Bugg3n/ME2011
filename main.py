@@ -148,7 +148,7 @@ def main():
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
     visualize_schedule(assigned_shifts_by_date, unassigned_shifts)
-
+    
 
     df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
     print(df)

@@ -115,11 +115,11 @@ def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_ho
    
     
 
-    cleaned_shifts_with_lunch  = add_lunch_breaks(cleaned_shifts, required_staffing, current_staffing, opening_hours, max_hours_before_lunch)
+    cleaned_shifts_with_lunch  = add_lunch_breaks(cleaned_shifts, required_staffing, current_staffing, opening_hours, max_hours_before_lunch,max_hours_per_day)
     
     if visualize:
         
-        visualize_schedule(cleaned_shifts_with_lunch, required_staffing, "Initial Shifts")
+        visualize_schedule(cleaned_shifts_with_lunch, required_staffing, "Initial Shifts with lunch breaks")
 
     cleaned_shifts_with_coverage = adjust_for_coverage(cleaned_shifts_with_lunch, required_staffing, opening_hours,min_hours_per_day)
     
@@ -132,14 +132,14 @@ def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_ho
 
     if visualize:
         visualize_schedule(cleaned_shifts_with_coverage_optimized, required_staffing, "Optimized Shifts")
-        input(cleaned_shifts_with_coverage_optimized)
+       
 
     return cleaned_shifts_with_coverage
 
 
-def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours, max_hours_before_lunch):
+def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours, max_hours_before_lunch,maximum_shift_length = 9):
     """Adds lunch breaks to shifts if they exceed max_hours_before_lunch, placing them optimally."""
-    
+    lunch_times = []
     cleaned_shifts = []
     
     for shift in shifts:
@@ -158,6 +158,7 @@ def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours,
             max_overstaffing = -1
 
             for hour in middle_section:
+               
                 staffing_index = hour - int(opening_hours[0].split(":")[0])
                 if current_staffing[staffing_index] > required_staffing[staffing_index]:  # Overstaffed hour
                     overstaffing_amount = current_staffing[staffing_index] - required_staffing[staffing_index]
@@ -167,28 +168,46 @@ def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours,
 
             if best_lunch_hour:
                 lunch_time = f"{best_lunch_hour}:00"
+                current_staffing[best_lunch_hour - int(opening_hours[0].split(":")[0])] -= 1
+                lunch_times.append(best_lunch_hour)
             else:
+                
                 for hour in middle_section:
+                    
                     if lunch_time != "None":
                         break
                     for other_shifts in shifts:
                         other_shift_start_time = int(other_shifts["start"].split(":")[0])
                         other_shift_end_time = int(other_shifts["end"].split(":")[0])
+                        
                         other_shifts_length = other_shift_end_time - other_shift_start_time
                         
-                        if hour == other_shift_end_time +1 and other_shifts_length < max_hours_before_lunch:                              
+                        if hour == other_shift_end_time +1 and other_shifts_length < max_hours_before_lunch and hour not in lunch_times:
+                                                          
                             lunch_time = f"{hour-1}:00"
-                            
+                            lunch_times.append(hour-1)
+                          
                             
                             other_shift_end_time += 1
                             shifts[shifts.index(other_shifts)]["end"] = f"{other_shift_end_time}:00"
                             break
-                        elif hour == other_shift_start_time -1 and other_shifts_length < max_hours_before_lunch:
+                        elif hour == other_shift_start_time -1 and other_shifts_length < maximum_shift_length and hour not in lunch_times:
+                            
                             lunch_time = f"{hour}:00"
+                            lunch_times.append(hour)
                             other_shift_start_time -= 1
                             shifts[shifts.index(other_shifts)]["start"] = f"{other_shift_start_time}:00"
                 if lunch_time == "None":
-                    lunch_time = f"{middle_section[0]}:00"            
+                    for hour in middle_section:
+                        if hour not in lunch_times:
+                            
+                            lunch_time = f"{hour}:00"
+                            lunch_times.append(hour)
+                            break
+               
+                    
+                    
+                             
 
         cleaned_shifts.append({"start": shift["start"], "end": shift["end"], "lunch": lunch_time})
 
@@ -233,6 +252,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
                     extended_gain = transaction_gain([1] * (end_idx - start_idx + 1), required_staffing, current_staffing)
 
                     if extended_gain > best_gain:
+
                         best_gain = extended_gain
                         best_option = ("extend", j)
 
@@ -250,6 +270,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
 
             # Apply the best option
             if best_option[0] == "extend":
+                input("exteeeend")
                 shifts[best_option[1]]["end"] = f"{int(shifts[best_option[1]]['end'].split(':')[0]) + 1}:00"
             else:
                 shifts.append(best_option[1])
@@ -385,7 +406,7 @@ def create_output(opening_hours, staffing_per_hour, shifts, store_id, day):
     return output
 
 
-def generate_monthly_schedule(year, month, store_id, monthly_staffing, 
+def generate_monthly_schedule(year, month, store_id, monthly_staffing = None, 
                               min_shift_hours=MIN_SHIFT_HOURS, 
                               max_hours_without_lunch=MAX_HOURS_WITHOUT_LUNCH, 
                               max_hours_per_day=MAX_HOURS_PER_DAY, 
@@ -408,6 +429,7 @@ def generate_monthly_schedule(year, month, store_id, monthly_staffing,
 
         # Get staffing per hour for this day from input data
         staffing_per_hour = monthly_staffing.get(date_str, [])
+        
 
         # Generate shifts for this day
         daily_shifts = construct_shifts(
@@ -431,6 +453,7 @@ if __name__ == "__main__":
     # Example usage: Generate schedule for March 2025
     year, month = 2025, 3
     store_id = "1"
+
 
     full_month_schedule = generate_monthly_schedule(year, month, store_id, visualize=True)
 
