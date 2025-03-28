@@ -5,79 +5,11 @@ import os
 import calendar
 import json
 # from visualize import main as visualize_model_3
-from Analysis.visualize2 import generate_html, generate_schedule_content
+from Analysis.visualize2 import generate_html
 from Analysis.analyze_employees import *
+from webserver.webserver import *
 
 from Model_3.employees import *
-
-
-import webbrowser
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import json
-import threading
-import sys
-
-class ScheduleServer(BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-class ScheduleServer(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            with open('monthly_schedule.html', 'rb') as f:
-                self.wfile.write(f.read())
-        else:
-            self.send_error(404)
-
-    def do_POST(self):
-        if self.path == '/calculate':
-            try:
-                content_length = int(self.headers['Content-Length'])
-                post_data = self.rfile.read(content_length)
-                params = json.loads(post_data)
-                
-                web_params = {
-                    'sales_capacity': int(params['sales_capacity']),
-                    'average_service_time': float(params['average_service_time']),
-                    'target_wait_time': float(params['target_wait_time'])
-                }
-                
-                assigned_shifts, unassigned_shifts = main(web_mode=True, web_params=web_params)
-                
-                # Use generate_schedule_content directly for web responses
-                schedule_html = generate_schedule_content(assigned_shifts, unassigned_shifts)
-                
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({'content': schedule_html}).encode())
-                
-            except Exception as e:
-                self.send_error(400, f"Error processing request: {str(e)}")
-
-def run_server():
-    
-    server = HTTPServer(('localhost', 8000), ScheduleServer)
-    print("Server running at http://localhost:8000")
-    
-    # Automatically open browser
-    webbrowser.open('http://localhost:8000')
-    
-    server.serve_forever()
-
-def do_OPTIONS(self):
-    self.send_response(200)
-    self.send_header('Access-Control-Allow-Origin', '*')
-    self.send_header('Access-Control-Allow-Methods', 'POST')
-    self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-    self.end_headers()
 
 YEAR = 2025
 MONTH = 2
@@ -142,17 +74,21 @@ def ensure_schedule_folder():
 
 
 #a function to create a schedule
-def create_schedule(Params = None):
+def create_schedule(web_mode=False, web_params = None):
     """Main function to create an optimized monthly employee schedule."""
     ensure_schedule_folder()
 
-    #print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
+    sales_capacity = web_params.get('sales_capacity', SALES_CAPACITY)
+    average_service_time = web_params.get('average_service_time', 10)
+    target_wait_time = web_params.get('target_wait_time', 5)
+
+    print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
     
     # Step 1: Generate staffing needs (Model 1)
-    monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, SALES_CAPACITY)
+    monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, sales_capacity)
 
 
-    #print(f"📊 Generating shift schedules for {calendar.month_name[MONTH]} {YEAR}...")
+    print(f"📊 Generating shift schedules for {calendar.month_name[MONTH]} {YEAR}...")
 
     # Step 2: Pass staffing data to Model 2 for scheduling
     monthly_schedule = model2.generate_monthly_schedule(
@@ -160,20 +96,14 @@ def create_schedule(Params = None):
         month=MONTH,
         store_id=STORE_ID,
         monthly_staffing=monthly_staffing,  # Passing this instead of calling model1 inside model2
-        visualize=True  # Set to True if you want to visualize daily schedules
+        visualize=False  # Set to True if you want to visualize daily schedules
     )
     
     total_required_hours = calculate_total_required_hours(monthly_schedule)
-
-    #print(f"👥 Loading employees...")
     employees = load_employees()
-
-    #print(f"🔍 Checking for previous month's schedule...")
     last_month_schedule = get_last_month_schedule(YEAR, MONTH)
 
-    #print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
-
-    #print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
+    print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
 
     # Step 3: Assign shifts to employees (Model 3)
     assigned_shifts, unassigned_shifts = model3.assign_shifts_to_employees_monthly(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours=HOURS_PER_MONTH[MONTH], debug = DEBUG)
@@ -204,7 +134,7 @@ def create_schedule(Params = None):
     with open(schedule_filename, "w") as f:
         json.dump(assigned_shifts, f, indent=4)
 
-    #print(f"✅ Final employee schedule saved to {schedule_filename}")
+    print(f"✅ Final employee schedule saved to {schedule_filename}")
 
     # Step 4: Transform schedule format for visualization
     assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
@@ -216,58 +146,24 @@ def create_schedule(Params = None):
 
     
     # Step 5: Visualize the final schedule
-    #print(f"📊 Opening schedule visualization...")
-    visualize_schedule(assigned_shifts_by_date, unassigned_shifts)
+    print(f"📊 Opening schedule visualization...")
+    generate_html(assigned_shifts_by_date, unassigned_shifts)
     
 
     df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
-    #print(df)
+    print(df)
 
     staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
-    #print(f"Total Scheduled Hours: {staffing_summary['total_scheduled_hours']} hours")
-    #print(f"Total Expected Hours: {staffing_summary['total_expected_hours']} hours")
-    #print(f"Total Required Hours: {staffing_summary['total_required_hours']} hours")
-    #print(f"Staff Balance: {staffing_summary['staff shortage']} hours")
-    #print(f"Staffing Status: {staffing_summary['status']}")
-    #print(f"store_coverage_%: {staffing_summary['store_coverage_%']}")
-    #print(f"Coverage Status: {staffing_summary['coverage_status']}")
-    #print(f"Note: {staffing_summary['note']}")
+    print(f"Total Scheduled Hours: {staffing_summary['total_scheduled_hours']} hours")
+    print(f"Total Expected Hours: {staffing_summary['total_expected_hours']} hours")
+    print(f"Total Required Hours: {staffing_summary['total_required_hours']} hours")
+    print(f"Staff Balance: {staffing_summary['staff shortage']} hours")
+    print(f"Staffing Status: {staffing_summary['status']}")
+    print(f"store_coverage_%: {staffing_summary['store_coverage_%']}")
+    print(f"Coverage Status: {staffing_summary['coverage_status']}")
+    print(f"Note: {staffing_summary['note']}")
 
-
-
-def main(web_mode=False, web_params=None):
-    if web_mode:
-        # Web interface mode - lightweight calculation
-        monthly_staffing = model1.generate_monthly_staffing(
-            year=YEAR,
-            month=MONTH,
-            store_id=STORE_ID,
-            sales_capacity=web_params['sales_capacity'],
-            average_service_time=web_params['average_service_time'],
-            target_wait_time=web_params['target_wait_time']
-        )
-        
-        monthly_schedule = model2.generate_monthly_schedule(
-            year=YEAR,
-            month=MONTH,
-            store_id=STORE_ID,
-            monthly_staffing=monthly_staffing,
-            visualize=False
-        )
-        
-        employees = load_employees()
-        assigned_shifts, unassigned_shifts = model3.assign_shifts_to_employees_monthly(
-            monthly_schedule, employees, YEAR, MONTH,
-            get_last_month_schedule(YEAR, MONTH),
-            max_hours=HOURS_PER_MONTH[MONTH],
-            debug=DEBUG
-        )
-        
-        return model3.transform_schedule_format(assigned_shifts, YEAR, MONTH), unassigned_shifts
-    else:
-        # Normal CLI mode - full calculation
-        create_schedule()
-
+    return assigned_shifts_by_date, unassigned_shifts
     
 
 def get_last_month_schedule (year, month):
