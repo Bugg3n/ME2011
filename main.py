@@ -41,16 +41,15 @@ HOURS_PER_MONTH = {
 #TODO
 # Färdigställa modell 3
     # Input för hur gärna du vill jobba helg
-    # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt)
-    # Implementera chefs-roll som buffert
+    # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt) + implementera spread här
+    # Fixa så chefen endast arbetar kontorstider. + Skapa en iterativ schemaläggning som lägger in chefen dagtid även om det är kvällspass som inte kan fyllas.
+    # 
 
-# Om den anställda vill arbeta mer - Om det beövs fler arbtestimmar efter att allas kontrakt är uppfyllda tas timmar härifrån i proportion till arbetsgrad
 # Städa model2. Ta bort funktioner som inte används
 # Lägg till ReadMe-fil och förklaringar för varje modul
-# Fixa model 1
-# Flytta all visualisering till vizualize.py
+# Fixa model 1 när vi får data från Kjell
 
-# Model 4?
+# Model 4 - Räkna ut minsta antalet anställda och deras anställningsgrader som krävs för att driva butiken under ett år.
 # Maximalt antal samtida anställda
 # Antalet timmar uppnås
 # Inga kollektivavtalsregler bryts
@@ -91,7 +90,7 @@ def main():
         month=MONTH,
         store_id=STORE_ID,
         monthly_staffing=monthly_staffing,  # Passing this instead of calling model1 inside model2
-        visualize=False  # Set to True if you want to visualize daily schedules
+        visualize=True  # Set to True if you want to visualize daily schedules
     )
     
     total_required_hours = calculate_total_required_hours(monthly_schedule)
