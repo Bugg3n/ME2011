@@ -18,7 +18,6 @@ def calculate_worked_hours(shifts):
     return round(total_seconds / 3600, 2)
 
 def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
-    print("in generate html")
     if unassigned_shifts is None:
         unassigned_shifts = []
     if staffing_summary is None:
@@ -26,11 +25,9 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
     
     # Generate just the schedule visualization content (without controls)
     schedule_content = generate_schedule_content(schedule_data, unassigned_shifts, staffing_summary)
-    print("schedule generated")
     
     # In web mode, return ONLY the dynamic content
     if os.environ.get('WEB_MODE') == "1":
-        print("In webmode. Returning")
         return schedule_content
     
     # For standalone mode, return full HTML page
@@ -168,6 +165,7 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
         display: block;
     }}
 
+    /* New Summary Section Styles */
     .summary-section {{
         margin: 1rem;
         padding: 1rem;
@@ -176,6 +174,91 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
         box-shadow: 0 0 10px rgba(0,0,0,0.05);
     }}
 
+    .metrics-container {{
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }}
+
+    .primary-metrics {{
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+    }}
+
+    .metric-card {{
+        padding: 1rem;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }}
+
+    .metric-card.positive {{
+        border-left: 4px solid #28a745;
+        background: #e8f5e9;
+    }}
+
+    .metric-card.warning {{
+        border-left: 4px solid #ffc107;
+        background: #fff8e1;
+    }}
+
+    .metric-card.negative {{
+        border-left: 4px solid #dc3545;
+        background: #ffebee;
+    }}
+
+    .metric-label {{
+        font-size: 0.9rem;
+        color: #555;
+        margin-bottom: 0.5rem;
+    }}
+
+    .metric-value {{
+        font-size: 1.2rem;
+        font-weight: bold;
+    }}
+
+    .secondary-metrics {{
+        display: none;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f1f1f1;
+        border-radius: 8px;
+    }}
+
+    .secondary-metrics.visible {{
+        display: block;
+    }}
+
+    .detail-row {{
+        display: flex;
+        margin-bottom: 0.5rem;
+    }}
+
+    .detail-label {{
+        flex: 1;
+        font-weight: 500;
+    }}
+
+    .detail-value {{
+        flex: 1;
+    }}
+
+    .toggle-details {{
+        background: none;
+        border: none;
+        color: #007bff;
+        cursor: pointer;
+        padding: 0.5rem 0;
+        text-align: left;
+        font-size: 0.9rem;
+    }}
+
+    .toggle-details:hover {{
+        text-decoration: underline;
+    }}
+
+    /* Existing timeline styles */
     .timeline-container {{
         margin-top: 1rem;
         padding-left: 120px;
@@ -293,48 +376,7 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
     .unassigned-shifts ul {{
         margin-bottom: 0;
     }}
-
-    .staffing-summary {{
-        background: #e9ecef;
-        padding: 1.5rem;
-        margin: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #007bff;
-    }}
-
-    .staffing-summary h3 {{
-        margin-top: 0;
-        color: #007bff;
-        border-bottom: 1px solid #dee2e6;
-        padding-bottom: 0.5rem;
-    }}
-
-    .summary-item {{
-        margin-bottom: 0.5rem;
-        display: flex;
-    }}
-
-    .summary-label {{
-        font-weight: 600;
-        min-width: 180px;
-    }}
-
-    .summary-value {{
-        flex: 1;
-    }}
-
-    .status-positive {{
-        color: #28a745;
-    }}
-
-    .status-warning {{
-        color: #ffc107;
-    }}
-
-    .status-negative {{
-        color: #dc3545;
-    }}
-</style>
+    </style>
 </head>
 <body>
     <div id="staticContent">
@@ -382,6 +424,7 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
     <script>
         let isUpdating = false;
         let currentActiveDay = null;
+        let currentStaffingSummary = null;
 
         function validateInputs() {{
             let isValid = true;
@@ -414,6 +457,36 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
             }}
             
             return isValid;
+        }}
+        
+        function toggleDetails() {{
+            const details = document.querySelector('.secondary-metrics');
+            const button = document.querySelector('.toggle-details');
+            if (details && button) {{
+                details.classList.toggle('visible');
+                button.textContent = details.classList.contains('visible') 
+                    ? '▲ Hide Detailed Metrics' 
+                    : '▼ Show Detailed Metrics';
+            }}
+        }}
+        
+        function attachEventListeners() {{
+            // Reattach event listeners to any dynamic elements
+            const toggleButton = document.querySelector('.toggle-details');
+            if (toggleButton) {{
+                toggleButton.removeEventListener('click', toggleDetails); // Remove existing first to prevent duplicates
+                toggleButton.addEventListener('click', toggleDetails);
+            }}
+            
+            // Reattach day click handlers - improved version
+            document.querySelectorAll('.calendar .day').forEach(day => {{
+                // Remove any existing click handlers
+                day.onclick = null;
+                day.addEventListener('click', function() {{
+                    const dayNum = this.textContent.trim();
+                    toggleSchedule(`schedule-${{dayNum}}`);
+                }});
+            }});
         }}
         
         async function updateSchedule() {{
@@ -457,6 +530,7 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
                 
                 if (result && result.content) {{
                     document.getElementById('dynamicScheduleContent').innerHTML = result.content;
+                    currentStaffingSummary = result.summary;
                     
                     document.getElementById('salesCapacity').value = currentValues.salesCapacity;
                     document.getElementById('serviceTime').value = currentValues.serviceTime;
@@ -469,6 +543,9 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
                         }});
                         currentActiveDay = null;
                     }}
+                    
+                    // Reattach event listeners to new elements
+                    attachEventListeners();
                 }} else {{
                     throw new Error('Invalid response format from server');
                 }}
@@ -513,74 +590,97 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
         }}
         
         document.addEventListener('DOMContentLoaded', function() {{
-            // Don't show any schedule by default now
-            // Just focus on the summary
-            
             // Add input validation
             document.getElementById('salesCapacity').addEventListener('blur', validateInputs);
             document.getElementById('serviceTime').addEventListener('blur', validateInputs);
             document.getElementById('targetWait').addEventListener('blur', validateInputs);
+            
+            // Initialize all event listeners
+            attachEventListeners();
         }});
     </script>
 </body>
 </html>"""
 
     file_path = "monthly_schedule.html"
-    print("Creating file monthly schedule")
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(html)
     
     # Only open in browser if not in web mode
-    print("In webmode")
+    if not os.environ.get('WEB_MODE'):
+        webbrowser.open(f"file:///{os.path.abspath(file_path)}")
+
     return html
 
 def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_summary=None):
-    """Generates just the schedule visualization content"""
+    """Generates just the schedule visualization content (without full HTML document structure)"""
     if unassigned_shifts is None:
         unassigned_shifts = []
     if staffing_summary is None:
         staffing_summary = {}
     
-    content = """
-    <div class="summary-section">
-        <div class="staffing-summary">
-            <h3>Staffing Summary</h3>"""
-    
-    # Helper function to determine status class
-    def get_status_class(value):
+    def get_status_class(metric_name, value):
+        """Enhanced status classifier"""
         if isinstance(value, str):
             value = value.lower()
-            if 'adequate' in value or 'good' in value or 'sufficient' in value:
-                return 'status-positive'
-            elif 'warning' in value or 'partial' in value:
-                return 'status-warning'
-            elif 'shortage' in value or 'insufficient' in value:
-                return 'status-negative'
+            if 'adequate' in value or 'good' in value:
+                return 'positive'
+            if 'warning' in value or 'partial' in value:
+                return 'warning'
+            return 'negative'
+        elif isinstance(value, (int, float)):
+            if 'coverage' in metric_name.lower():
+                return 'positive' if value >= 95 else 'warning' if value >= 80 else 'negative'
+            elif 'shortage' in metric_name.lower():
+                return 'negative' if value > 0 else 'positive'
         return ''
     
-    # Get values with fallbacks for different key naming possibilities
-    summary_items = [
-        ('Total Scheduled Hours', staffing_summary.get('total_scheduled_hours', 'N/A'), 'hours'),
-        ('Total Expected Hours', staffing_summary.get('total_expected_hours', 'N/A'), 'hours'),
-        ('Total Required Hours', staffing_summary.get('total_required_hours', 'N/A'), 'hours'),
-        ('Staff Balance', staffing_summary.get('staff shortage', staffing_summary.get('staff_shortage', 'N/A')), 'hours'),
-        ('Staffing Status', staffing_summary.get('status', 'N/A'), ''),
-        ('Store Coverage', staffing_summary.get('store_coverage_%', staffing_summary.get('store_coverage', 'N/A')), '%'),
-        ('Coverage Status', staffing_summary.get('coverage_status', 'N/A'), ''),
-        ('Note', staffing_summary.get('note', 'N/A'), '')
+    # Primary metrics (always visible)
+    primary_metrics = [
+        ('Scheduled Hours', staffing_summary.get('total_scheduled_hours', 'N/A'), 'hours'),
+        ('Required Hours', staffing_summary.get('total_required_hours', 'N/A'), 'hours'),
+        ('Coverage', staffing_summary.get('store_coverage_%', staffing_summary.get('store_coverage', 'N/A')), '%'),
+        ('Status', staffing_summary.get('status', 'N/A'), '')
     ]
     
-    for label, value, unit in summary_items:
-        status_class = get_status_class(str(value))
-        if isinstance(value, (int, float)):
-            value = f"{value:.2f}"
-        content += f"""
-        <div class="summary-item">
-            <div class="summary-label">{label}:</div>
-            <div class="summary-value {status_class}">{value} {unit if str(value) != 'N/A' else ''}</div>
-        </div>"""
+    # Secondary metrics (expandable)
+    secondary_metrics = [
+        ('Expected Hours', staffing_summary.get('total_expected_hours', 'N/A'), 'hours'),
+        ('Staff Shortage', staffing_summary.get('staff shortage', staffing_summary.get('staff_shortage', 'N/A')), 'hours'),
+        ('Coverage Status', staffing_summary.get('coverage_status', 'N/A'), ''),
+        ('Notes', staffing_summary.get('note', 'N/A'), '')
+    ]
     
-    content += """
+    # Generate primary metrics HTML
+    primary_html = '\n'.join([
+        f'<div class="metric-card {get_status_class(label, value)}">'
+        f'<div class="metric-label">{label}</div>'
+        f'<div class="metric-value">{value}{unit if str(value) != "N/A" else ""}</div>'
+        '</div>'
+        for label, value, unit in primary_metrics
+    ])
+    
+    # Generate secondary metrics HTML
+    secondary_html = '\n'.join([
+        f'<div class="detail-row">'
+        f'<div class="detail-label">{label}:</div>'
+        f'<div class="detail-value">{value}{unit if str(value) != "N/A" else ""}</div>'
+        '</div>'
+        for label, value, unit in secondary_metrics
+    ])
+    
+    # Build the complete content
+    content = f"""
+    <div class="summary-section">
+        <div class="staffing-summary">
+            <h3>Staffing Summary</h3>
+            <div class="primary-metrics">
+                {primary_html}
+            </div>
+            <button class="toggle-details">▼ Show Detailed Metrics</button>
+            <div class="secondary-metrics">
+                {secondary_html}
+            </div>
         </div>
     </div>"""
     
@@ -599,10 +699,10 @@ def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_su
     content += '<div class="calendar">'
     for date in schedule_data.keys():
         day = datetime.strptime(date, "%Y-%m-%d").day
-        content += f'<div class="day" onclick="toggleSchedule(\'schedule-{day}\')">{day}</div>'
+        content += f'<div class="day">{day}</div>'
     content += '</div>'
     
-    # Add the schedule visualizations (hidden by default)
+    # Add the schedule visualizations
     content += '<main id="schedules">'
     for date, shifts in schedule_data.items():
         day = datetime.strptime(date, "%Y-%m-%d").day
@@ -611,17 +711,15 @@ def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_su
         content += f'<div id="schedule-{day}" class="schedule">'
         content += f'<h2>{date}</h2>'
         
-        # Define time range constants (8:00 AM to 10:00 PM) #OBS THIS WILL HAVE TO BE ADAPTABLE
+        # Timeline visualization
         min_hour = 8
         max_hour = 22
         total_hours = max_hour - min_hour
         minutes_per_hour = 60
         total_minutes = total_hours * minutes_per_hour
         
-        # Timeline container for all employee shifts
         content += '<div class="timeline-container">'
         
-        # Employee shifts
         for employee, shift_list in shifts.items():
             employee_hours = calculate_worked_hours(shift_list)
             total_worked_hours += employee_hours
@@ -632,37 +730,29 @@ def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_su
             content += '<div class="timeline">'
             
             for shift in shift_list:
-                # Parse shift times
                 start_time = datetime.strptime(shift["start"], "%H:%M")
                 end_time = datetime.strptime(shift["end"], "%H:%M")
                 
-                # Calculate positions
                 start_min = (start_time.hour - min_hour) * 60 + start_time.minute
                 end_min = (end_time.hour - min_hour) * 60 + end_time.minute
                 start_percent = max(0, min(100, (start_min / total_minutes) * 100))
                 end_percent = max(0, min(100, (end_min / total_minutes) * 100))
                 width_percent = max(0, min(100 - start_percent, end_percent - start_percent))
                 
-                # Shift block
                 content += f'<div class="shift" style="left:{start_percent}%; width:{width_percent}%"></div>'
                 
-                # Lunch break (only if specified)
                 if shift["lunch"] != "None":
-                    lunch_time = datetime.strptime(shift["lunch"], "%H:%M")
-                    lunch_min = (lunch_time.hour - min_hour) * 60 + lunch_time.minute
-                    lunch_percent = max(0, min(100, (lunch_min / total_minutes) * 100))
-                    lunch_width = (60 / total_minutes) * 100  # 1 hour lunch
+                    lunch_hour = int(shift["lunch"].split(":")[0])
+                    lunch_start_percent = max(0, min(100, ((lunch_hour - min_hour) * 60 / total_minutes) * 100))
+                    lunch_width_percent = max(0, min(100 - lunch_start_percent, (60 / total_minutes) * 100))
                     
-                    # Ensure lunch doesn't extend beyond shift
-                    lunch_end_percent = min(lunch_percent + lunch_width, end_percent)
-                    adjusted_lunch_width = lunch_end_percent - lunch_percent
-                    
-                    if adjusted_lunch_width > 0:
-                        content += f'<div class="lunch" style="left:{lunch_percent}%; width:{adjusted_lunch_width}%"></div>'
+                    content += f'<div class="lunch" style="left:{lunch_start_percent}%; width:{lunch_width_percent}%"></div>'
             
-            content += '</div></div></div>'  # Close timeline, timeline-wrapper, and employee-row
+            content += '</div></div></div>'
         
-        # Single time axis at the bottom
+        content += '</div>'  # Close timeline-container
+        
+        # Time axis
         content += '<div class="time-axis">'
         for hour in range(min_hour, max_hour + 1):
             for minute in [0, 30]:
@@ -673,8 +763,6 @@ def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_su
                 if minute == 0:
                     content += f'<div class="hour-label" style="left:{time_percent}%">{hour}:00</div>'
         content += '</div>'
-        
-        content += '</div>'  # Close timeline-container
         
         # Shift details
         content += '<div class="shift-details">'

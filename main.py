@@ -85,6 +85,9 @@ def create_schedule(web_mode=False, web_params = None):
 
     print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
     
+
+
+    print("###############################################################################################")
     # Step 1: Generate staffing needs (Model 1)
     monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, sales_capacity)
 
@@ -155,7 +158,7 @@ def create_schedule(web_mode=False, web_params = None):
     print(f"Coverage Status: {staffing_summary['coverage_status']}")
     print(f"Note: {staffing_summary['note']}")
 
-    return assigned_shifts_by_date, unassigned_shifts
+    return assigned_shifts_by_date, unassigned_shifts, staffing_summary
     
 
 def get_last_month_schedule (year, month):

@@ -41,31 +41,58 @@ class ScheduleServer(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/calculate':
             try:
-                content_length = int(self.headers['Content-Length'])
+                # Read and parse the request data first
+                content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
-                params = json.loads(post_data)
-
-
-                schedule_html, unassigned_shifts = create_schedule(
-                    web_mode=True,
-                    web_params={
-                        'sales_capacity': int(params['sales_capacity']),
-                        'average_service_time': float(params['average_service_time']),
-                        'target_wait_time': float(params['target_wait_time']),
-                    }
-                )
-
-                html_content = generate_schedule_content(schedule_html, unassigned_shifts)
-
                 
+                # Verify connection is still alive
+                if self.connection.fileno() == -1:
+                    return  # Client disconnected
+                
+                params = json.loads(post_data)
+                web_params = {
+                    'sales_capacity': int(params['sales_capacity']),
+                    'average_service_time': float(params['average_service_time']),
+                    'target_wait_time': float(params['target_wait_time'])
+                }
+                
+                # Process the request
+                assigned_shifts, unassigned_shifts, staffing_summary = create_schedule(
+                    web_mode=True, 
+                    web_params=web_params
+                )
+                
+                # Generate response
+                response_data = json.dumps({
+                    'content': generate_schedule_content(assigned_shifts, unassigned_shifts, staffing_summary),
+                    'summary': staffing_summary
+                }).encode()
+                
+                # Send response
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({'content': html_content}).encode())
+                self.send_header('Content-Length', len(response_data))
                 
+                # Flush headers immediately
+                self.end_headers()
+                
+                # Send body in one go
+                self.wfile.write(response_data)
+                self.wfile.flush()
+                
+            except (ConnectionAbortedError, ConnectionResetError):
+                # Client disconnected - no need to handle
+                pass
+            except json.JSONDecodeError as e:
+                self.send_error(400, f"Invalid JSON: {str(e)}")
+            except KeyError as e:
+                self.send_error(400, f"Missing parameter: {str(e)}")
             except Exception as e:
-                self.send_error(400, f"Error processing request: {str(e)}")
+                try:
+                    self.send_error(500, f"Server error: {str(e)}")
+                except:
+                    pass  # Client may have disconnected
 
 def run_server():
     
