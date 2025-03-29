@@ -109,6 +109,7 @@ def create_schedule(web_mode=False, web_params = None):
 
     print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
 
+    
     # Step 3: Assign shifts to employees (Model 3)
     assigned_shifts, unassigned_shifts = model3.create_schedule(
         monthly_schedule, 
@@ -122,6 +123,7 @@ def create_schedule(web_mode=False, web_params = None):
         max_daily_hours = MAX_DAILY_HOURS, 
         )
     
+    print("model 3 is done")
     # Save final schedule
     schedule_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}.json")
     with open(schedule_filename, "w") as f:
@@ -141,8 +143,10 @@ def create_schedule(web_mode=False, web_params = None):
     print(df)
     staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
 
+    unassigned_shifts = None
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
+    
     generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary)
     
 

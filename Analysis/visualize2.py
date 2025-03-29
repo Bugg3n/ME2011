@@ -688,12 +688,14 @@ def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_su
         content += """
         <div class="unassigned-shifts">
             <h3>⚠️ Unassigned Shifts</h3>
-            <ul>"""
+            <ul>
+        """
         for shift in unassigned_shifts:
             content += f"<li>{shift['date']}: {shift['start']} - {shift['end']}</li>"
         content += """
             </ul>
-        </div>"""
+        </div>
+        """
     
     # Add the calendar days
     content += '<div class="calendar">'

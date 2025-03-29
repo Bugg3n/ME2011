@@ -56,11 +56,13 @@ class ScheduleServer(BaseHTTPRequestHandler):
                     'target_wait_time': float(params['target_wait_time'])
                 }
                 
+                
                 # Process the request
                 assigned_shifts, unassigned_shifts, staffing_summary = create_schedule(
                     web_mode=True, 
                     web_params=web_params
                 )
+                
                 
                 # Generate response
                 response_data = json.dumps({

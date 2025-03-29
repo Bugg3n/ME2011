@@ -96,9 +96,10 @@ class Employee:
 
         return True
     
-    def is_available_for_overtime(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = False):
+    def is_available_for_overtime_function(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = False):
+        
         if self.is_available_for_overtime:
-            return self.is_available(self, shift_date, shift_start, shift_end, monthly_max_hours, debug = debug, overtime = True)
+            return self.is_available(shift_date, shift_start, shift_end, monthly_max_hours, debug = debug, overtime = True)
         return False
     
     

@@ -74,7 +74,7 @@ def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expect
 
 
     # Compare the scheduled and expected hours
-    difference = total_expected_hours - total_required_hours
+    difference = float(total_expected_hours) - float(total_required_hours)
     staffing_status = "Balanced"
     if difference > 0:
         staffing_status = "Overstaffed"

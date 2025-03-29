@@ -270,7 +270,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
 
             # Apply the best option
             if best_option[0] == "extend":
-                input("exteeeend")
+                
                 shifts[best_option[1]]["end"] = f"{int(shifts[best_option[1]]['end'].split(':')[0]) + 1}:00"
             else:
                 shifts.append(best_option[1])

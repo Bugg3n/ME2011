@@ -27,8 +27,9 @@ def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, l
         employees.sort(key=lambda e: (monthly_hours[e.name], abs(weekly_hours[e.name][week_num] - (e.max_hours_per_week / 4))))
 
         for shift in shifts:
+            
             assign_shift_to_best_employee(shift, date_str, employees, assigned_shifts, monthly_hours, weekly_hours, week_num, max_hours, unassigned_shifts, debug)
-
+        
     return assigned_shifts, unassigned_shifts
 
 def handle_new_periods(employees, day, date_str, week_num, last_month_schedule, weekly_hours, year, month):
@@ -45,7 +46,7 @@ def handle_new_periods(employees, day, date_str, week_num, last_month_schedule, 
                 weekly_hours[emp.name][week_num] += carryover_hours[emp.name]
 
 def assign_shift_to_best_employee(shift, date_str, employees, assigned_shifts, monthly_hours, weekly_hours, week_num, max_hours, unassigned_shifts, debug):
-    shift_start, shift_end = shift["start"], shift["end"]
+    shift_start, shift_end, shift_lunch = shift["start"], shift["end"],shift["lunch"]
     best_employee, best_fit_score = None, float('-inf')
 
     for emp in employees:
@@ -59,7 +60,11 @@ def assign_shift_to_best_employee(shift, date_str, employees, assigned_shifts, m
         assign_shift(best_employee, shift, date_str, assigned_shifts, monthly_hours, weekly_hours, week_num)
     else:
         print(f"No employee available on {date_str} for shift {shift_start} - {shift_end}")
-        unassigned_shifts.append({"date": date_str, "start": shift_start, "end": shift_end})
+        unassigned_shifts.append({"date": date_str, "start": shift_start, "end": shift_end, "lunch": shift_lunch})
+    
+    
+   
+        
 
 def assign_shift(emp, shift, date_str, assigned_shifts, monthly_hours, weekly_hours, week_num):
     shift_with_date = {
@@ -86,12 +91,14 @@ def cover_remaining_shifts(assigned_shifts, unassigned_shifts, employees, year, 
     still_unassigned = []
 
     for shift in unassigned_shifts:
+        
         assigned = (
             try_extend_under_scheduled(assigned_shifts, employees, shift, store_open_time, store_close_time, monthly_hours) or
             try_assign_manager(assigned_shifts, employees, shift, monthly_hours) or
             try_assign_overtime(assigned_shifts, employees, shift, monthly_hours)
         )
         if not assigned:
+            
             still_unassigned.append(shift)
 
     return assigned_shifts, still_unassigned
@@ -115,6 +122,7 @@ def try_extend_under_scheduled(assigned_shifts, employees, shift, store_open_tim
                         s["start"] = shift["start"]
                         emp.monthly_assigned_hours += shift_hours
                         return True
+    
     return False
 
 
@@ -127,16 +135,23 @@ def try_assign_manager(assigned_shifts, employees, shift, monthly_hours):
             emp.weekly_sales_hours -= shift_hours
             emp.monthly_assigned_hours += shift_hours
             return True
+    
     return False
 
 def try_assign_overtime(assigned_shifts, employees, shift, monthly_hours):
+    
     for emp in employees:
-        if emp.is_available_for_overtime(shift["date"], shift["start"], shift["end"], monthly_hours):
+        
+        
+
+        if emp.is_available_for_overtime_function(shift["date"], shift["start"], shift["end"], monthly_hours):
+      
             emp.assign_shift(shift)
             assigned_shifts[emp.name].append(shift)
             shift_hours = (datetime.strptime(shift["end"], "%H:%M") - datetime.strptime(shift["start"], "%H:%M")).seconds // 3600
             emp.monthly_assigned_hours += shift_hours
             return True
+ 
     return False
 
 
@@ -274,6 +289,7 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
             continue
 
         hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
+        print(f"Type of shift_duration: {type(shift_duration)}")
         shifts.sort(key=shift_duration)
 
         for shift in shifts:
@@ -384,7 +400,7 @@ def create_schedule(monthly_schedule, employees, YEAR, MONTH, last_month_schedul
         max_hours, 
         debug
     )
-    
+  
     assigned_shifts, unassigned_shifts = cover_remaining_shifts(
         assigned_shifts,
         unassigned_shifts,
@@ -396,7 +412,7 @@ def create_schedule(monthly_schedule, employees, YEAR, MONTH, last_month_schedul
         max_daily_hours=max_daily_hours,
         monthly_hours=max_hours
     )
-
+  
     assigned_shifts = extend_shifts_to_fulfill_contracts(
         employees, 
         assigned_shifts, 
@@ -405,5 +421,6 @@ def create_schedule(monthly_schedule, employees, YEAR, MONTH, last_month_schedul
         max_daily_hours=max_daily_hours,
         monthly_hours=max_hours
     )
+    
 
     return assigned_shifts, unassigned_shifts
