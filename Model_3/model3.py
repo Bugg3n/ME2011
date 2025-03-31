@@ -122,7 +122,6 @@ def try_extend_under_scheduled(assigned_shifts, employees, shift, store_open_tim
                         s["start"] = shift["start"]
                         emp.monthly_assigned_hours += shift_hours
                         return True
-    
     return False
 
 
@@ -141,8 +140,6 @@ def try_assign_manager(assigned_shifts, employees, shift, monthly_hours):
 def try_assign_overtime(assigned_shifts, employees, shift, monthly_hours):
     
     for emp in employees:
-        
-        
 
         if emp.is_available_for_overtime_function(shift["date"], shift["start"], shift["end"], monthly_hours):
       
@@ -235,7 +232,7 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
     # Weekend preference bonus
     shift_day = datetime.strptime(shift_date, "%Y-%m-%d").weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
     if shift_day in (5, 6):  # If Saturday or Sunday
-        weekend_bonus = emp.weekend_preference  # 10 = loves weekends
+        weekend_bonus = emp.weekend_preference
     else:
         weekend_bonus = 0
 
@@ -380,21 +377,32 @@ def extend_shift_logic(shift, store_open_time, store_close_time, hours_needed, m
 
     if current_length < 5:
         max_total_extension = min(remaining_expandable, max_start_extension + max_end_extension, 5 - current_length)
-        extend_early = min(max_start_extension, max_total_extension // 2)
-        extend_late = min(max_end_extension, max_total_extension - extend_early)
     else:
         max_total_extension = min(remaining_expandable, max_start_extension + max_end_extension, hours_needed)
-        extend_early = min(max_start_extension, max_total_extension // 2)
-        extend_late = min(max_end_extension, max_total_extension - extend_early)
+
+    extend_early = 0
+    extend_late = 0
+
+    # Prefer extending in both directions if possible
+    if max_start_extension >= max_end_extension:
+        extend_early = min(max_start_extension, max_total_extension)
+        remaining = max_total_extension - extend_early
+        extend_late = min(max_end_extension, remaining)
+    else:
+        extend_late = min(max_end_extension, max_total_extension)
+        remaining = max_total_extension - extend_late
+        extend_early = min(max_start_extension, remaining)
 
     return extend_early, extend_late
 
 
+
 def shift_duration(shift):
-            start = datetime.strptime(shift["start"], "%H:%M")
-            end = datetime.strptime(shift["end"], "%H:%M")
-            lunch = 1 if shift["lunch"] != "None" else 0
-            return (end - start).seconds / 3600 - lunch
+    start = datetime.strptime(shift["start"], "%H:%M")
+    end = datetime.strptime(shift["end"], "%H:%M")
+    lunch = 1 if shift["lunch"] != "None" else 0
+    return (end - start).seconds / 3600 - lunch
+    
 
 def create_schedule(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, max_hours, debug, store_open, store_close, max_daily_hours):
     

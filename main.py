@@ -139,8 +139,9 @@ def create_schedule(web_mode=False, web_params = None):
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
 
+    assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
+
     df_summary = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
-    print(df_summary)
     staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
     
     summary_html = generate_employee_summary_html(df_summary)
@@ -153,23 +154,33 @@ def create_schedule(web_mode=False, web_params = None):
     print(f"📊 Opening schedule visualization...")
     
     generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary)
-    
-
-    
-
-    
-    print(f"Total Scheduled Hours: {staffing_summary['total_scheduled_hours']} hours")
-    print(f"Total Expected Hours: {staffing_summary['total_expected_hours']} hours")
-    print(f"Total Required Hours: {staffing_summary['total_required_hours']} hours")
-    print(f"Staff Balance: {staffing_summary['staff shortage']} hours")
-    print(f"Staffing Status: {staffing_summary['status']}")
-    print(f"store_coverage_%: {staffing_summary['store_coverage_%']}")
-    print(f"Coverage Status: {staffing_summary['coverage_status']}")
-    print(f"Note: {staffing_summary['note']}")
 
     return assigned_shifts_by_date, unassigned_shifts, staffing_summary
-    
 
+
+def inject_unassigned_into_schedule(assigned_by_date, unassigned_shifts):
+    """Adds unassigned shifts to the schedule dictionary as Unassigned 1, 2, etc."""
+    unassigned_counter = {}
+
+    for i, shift in enumerate(unassigned_shifts, start=1):
+        date = shift["date"]
+        label = f"Unassigned {i}"
+
+        if date not in assigned_by_date:
+            assigned_by_date[date] = {}
+
+        if label not in assigned_by_date[date]:
+            assigned_by_date[date][label] = []
+
+        assigned_by_date[date][label].append({
+            "start": shift["start"],
+            "end": shift["end"],
+            "lunch": "None",  # or leave out if not needed
+            "date": date
+        })
+
+    return assigned_by_date
+    
 def get_last_month_schedule (year, month):
     last_year, last_month = get_last_month(year, month)
     last_schedule_filename = f"final_schedule_{last_year}_{last_month}.json"
