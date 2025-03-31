@@ -2,6 +2,7 @@ import os
 import json
 from datetime import datetime, timedelta
 import webbrowser
+import pandas as pd
 
 def calculate_worked_hours(shifts):
     total_seconds = 0
@@ -16,6 +17,11 @@ def calculate_worked_hours(shifts):
         total_seconds += max(0, shift_duration)
     
     return round(total_seconds / 3600, 2)
+
+def generate_employee_summary_html(df: pd.DataFrame) -> str:
+    """Converts a DataFrame of employee stats to HTML table."""
+    return df.to_html(index=False, classes="employee-summary-table", border=0)
+
 
 def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
     if unassigned_shifts is None:
@@ -415,6 +421,10 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
                 </div>
             </div>
         </div>
+        <div style="margin: 20px;">
+            <button onclick="loadEmployeeSummary()">📋 Show Employee Summary</button>
+            <div id="employeeStats" style="margin-top: 15px; font-family: monospace; background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.1);"></div>
+        </div>
     </div>
     
     <div id="dynamicScheduleContent">
@@ -598,6 +608,22 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
             // Initialize all event listeners
             attachEventListeners();
         }});
+        function loadEmployeeSummary() {{
+            fetch('employee_summary.html')
+                .then(response => {{
+                    if (!response.ok) {{
+                        throw new Error("Failed to load employee summary");
+                    }}
+                    return response.text();
+                }})
+                .then(html => {{
+                    document.getElementById('employeeStats').innerHTML = html;
+                }})
+                .catch(error => {{
+                    document.getElementById('employeeStats').innerHTML = `<p style='color:red;'>${{error.message}}</p>`;
+                }});
+        }}
+
     </script>
 </body>
 </html>"""

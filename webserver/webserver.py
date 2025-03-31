@@ -6,6 +6,7 @@ import sys
 from main import create_schedule
 from Analysis.visualize2 import generate_schedule_content
 
+
 class ScheduleServer(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -22,6 +23,17 @@ class ScheduleServer(BaseHTTPRequestHandler):
             self.end_headers()
             with open('monthly_schedule.html', 'rb') as f:
                 self.wfile.write(f.read())
+
+        elif self.path == '/employee_summary.html':
+            try:
+                with open('employee_summary.html', 'rb') as f:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/html')
+                    self.end_headers()
+                    self.wfile.write(f.read())
+            except FileNotFoundError:
+                self.send_error(404, "Employee summary not found.")
+
         elif self.path.startswith("/model2/day/"):
             date = self.path.split("/model2/day/")[1]
             try:

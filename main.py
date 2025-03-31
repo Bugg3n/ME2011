@@ -5,7 +5,7 @@ import os
 import calendar
 import json
 # from visualize import main as visualize_model_3
-from Analysis.visualize2 import generate_html
+from Analysis.visualize2 import generate_html, generate_employee_summary_html
 from Analysis.analyze_employees import *
 from webserver.webserver import *
 
@@ -139,9 +139,14 @@ def create_schedule(web_mode=False, web_params = None):
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
 
-    df = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
-    print(df)
+    df_summary = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
+    print(df_summary)
     staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
+    
+    summary_html = generate_employee_summary_html(df_summary)
+
+    with open("employee_summary.html", "w", encoding="utf-8") as f:
+        f.write(summary_html)
 
     unassigned_shifts = None
     # Step 5: Visualize the final schedule
