@@ -5,7 +5,7 @@ import sqlite3
 
 class Employee:
 
-    def __init__(self, name, employment_rate, early_late_preference, spread, unavailable_dates=None, manager = False, overtime = False, emp_id=None):
+    def __init__(self, name, employment_rate, early_late_preference, spread, unavailable_dates=None, manager = False, overtime = False, emp_id=None, weekend_preference=5):
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Name must be a non-empty string.")
         
@@ -28,7 +28,10 @@ class Employee:
         if not isinstance(manager, bool):
             raise ValueError("Manager must be a boolean (True/False).")
         
-
+        if not isinstance(weekend_preference, int) or not (1 <= weekend_preference <= 10):
+            raise ValueError("Weekend preference must be an int between 1 and 10.")
+        
+        self.weekend_preference = weekend_preference
         self.weekly_sales_hours = None
         self.name = name.strip()
         self.employment_rate = employment_rate
@@ -131,18 +134,23 @@ class Employee:
 
 
 def load_employees():
+
     """Fetch employees from the database and return a list of Employee objects."""
     
     conn = sqlite3.connect("employees.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT emp_id, name, employment_rate, early_late_preference, spread, manager, unavailable_dates, is_available_for_overtime FROM employees")
-    rows = cursor.fetchall()
+    cursor.execute("""
+        SELECT emp_id, name, employment_rate, early_late_preference, spread, manager,
+            unavailable_dates, is_available_for_overtime, weekend_preference
+        FROM employees
+    """)    
 
+    rows = cursor.fetchall()
     employees = []
     
     for row in rows:
-        emp_id, name, employment_rate, early_late_preference, spread, manager, unavailable_dates, is_available_for_overtime = row
+        (emp_id, name, employment_rate, early_late_preference, spread, manager, unavailable_dates, is_available_for_overtime, weekend_preference) = row
 
         # Convert unavailable_dates (stored as comma-separated string) back into a list of date objects
         if unavailable_dates:
@@ -152,16 +160,16 @@ def load_employees():
 
         # Create Employee object
         employee = Employee(
-            emp_id = emp_id,
+            emp_id=emp_id,
             name=name,
             employment_rate=employment_rate,
             early_late_preference=early_late_preference,
             spread=spread,
             unavailable_dates=unavailable_dates,
             manager=bool(manager),
-            overtime=is_available_for_overtime
+            overtime=is_available_for_overtime,
+            weekend_preference=weekend_preference
         )
-        
         employees.append(employee)
 
     conn.close()

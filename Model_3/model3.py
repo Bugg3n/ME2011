@@ -232,8 +232,15 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
     # Calculate workload factor (favor employees with fewer assigned hours)
     workload_factor = (1 - emp.assigned_hours / emp.max_hours_per_week) * 10
 
+    # Weekend preference bonus
+    shift_day = datetime.strptime(shift_date, "%Y-%m-%d").weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
+    if shift_day in (5, 6):  # If Saturday or Sunday
+        weekend_bonus = emp.weekend_preference  # 10 = loves weekends
+    else:
+        weekend_bonus = 0
+
     # Final fit score
-    return preference_bonus + workload_factor
+    return preference_bonus + workload_factor + weekend_bonus
 
 def reset_all_weekly_hours(employees):
     """Resets weekly hour counters for all employees at the start of a new week."""
