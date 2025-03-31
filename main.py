@@ -134,12 +134,11 @@ def create_schedule(web_mode=False, web_params = None):
     # Step 4: Transform schedule format for visualization
     assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
 
+    assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
 
     schedule_by_date_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}_by_date.json")
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
-
-    assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
 
     df_summary = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
     staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
@@ -149,7 +148,6 @@ def create_schedule(web_mode=False, web_params = None):
     with open("employee_summary.html", "w", encoding="utf-8") as f:
         f.write(summary_html)
 
-    unassigned_shifts = None
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
     
