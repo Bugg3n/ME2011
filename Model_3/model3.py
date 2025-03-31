@@ -59,7 +59,7 @@ def assign_shift_to_best_employee(shift, date_str, employees, assigned_shifts, m
     if best_employee:
         assign_shift(best_employee, shift, date_str, assigned_shifts, monthly_hours, weekly_hours, week_num)
     else:
-        print(f"No employee available on {date_str} for shift {shift_start} - {shift_end}")
+        if debug: print(f"No employee available on {date_str} for shift {shift_start} - {shift_end}")
         unassigned_shifts.append({"date": date_str, "start": shift_start, "end": shift_end, "lunch": shift_lunch})
     
     
@@ -196,16 +196,6 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
     """
     Calculates a fit score for assigning an employee to a shift.
     
-    - Rewards employees who prefer early shifts when assigning morning shifts.
-    - Rewards employees who prefer late shifts when assigning evening shifts.
-    - Considers employment rate and assigned workload.
-    
-    Args:
-        emp (Employee): The employee object.
-        shift_date (str): The shift's date (YYYY-MM-DD).
-        shift_start (str): Shift start time (HH:MM).
-        shift_end (str): Shift end time (HH:MM).
-    
     Returns:
         float: The fit score (higher is better). Returns a large negative value if the employee is unavailable.
     """
@@ -214,14 +204,15 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
         return None
 
     shift_start_hour = int(shift_start.split(":")[0])
+    shift_end_hour = int(shift_end.split(":")[0])
 
-    early_threshold = 12  # Before 12:00 is considered an early shift
-    late_threshold = 17   # After 17:00 is considered a late shift
+    early_threshold = 17  # Before 12:00 is considered an early shift
+    late_threshold = 18   # After 17:00 is considered a late shift
 
     # Convert the single preference value (1 = prefers early, 10 = prefers late)
-    if shift_start_hour < early_threshold:
+    if shift_end_hour < early_threshold:
         preference_bonus = 10 - emp.early_late_preference  # Prefers early shifts
-    elif shift_start_hour >= late_threshold:
+    elif shift_end_hour >= late_threshold:
         preference_bonus = emp.early_late_preference  # Prefers late shifts
     else:
         preference_bonus = 5  # Neutral preference for midday shifts
@@ -293,7 +284,6 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
             continue
 
         hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
-        print(f"Type of shift_duration: {type(shift_duration)}")
         shifts.sort(key=shift_duration)
 
         for shift in shifts:
@@ -333,7 +323,6 @@ def extend_shift_with_lunch(shift, store_open_time, store_close_time, hours_need
     current_length = (end_time - start_time).seconds / 3600
 
     if current_length > 5:
-        print("already more than 5 hour shift")
         return None  # Skip long shifts already
 
     max_start_extension = int((start_time - store_open_time).seconds / 3600)

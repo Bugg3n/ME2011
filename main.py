@@ -1,6 +1,7 @@
 from Model_1 import model1
 from Model_2 import model2
 from Model_3 import model3
+from Model_3.employees import *
 import os
 import calendar
 import json
@@ -8,8 +9,8 @@ import json
 from Analysis.visualize2 import generate_html, generate_employee_summary_html
 from Analysis.analyze_employees import *
 from webserver.webserver import *
+import csv
 
-from Model_3.employees import *
 
 YEAR = 2025
 MONTH = 2
@@ -41,10 +42,8 @@ HOURS_PER_MONTH = {
 
 #TODO
 # Färdigställa modell 3
-    # Input för hur gärna du vill jobba helg
     # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt) + implementera spread här
     # Fixa så chefen endast arbetar kontorstider. + Skapa en iterativ schemaläggning som lägger in chefen dagtid även om det är kvällspass som inte kan fyllas.
-    # 
 
 # Städa model2. Ta bort funktioner som inte används
 # Lägg till ReadMe-fil och förklaringar för varje modul
@@ -153,6 +152,8 @@ def create_schedule(web_mode=False, web_params = None):
     
     generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary)
 
+    export_schedule_to_csv(assigned_shifts, filename=f"csv-files/final_schedule_{YEAR}_{MONTH}.csv")
+
     return assigned_shifts_by_date, unassigned_shifts, staffing_summary
 
 
@@ -203,6 +204,55 @@ def get_last_month(year, month):
         last_year = year
         last_month = month - 1
     return last_year, last_month
+
+import csv
+from datetime import datetime
+
+def export_schedule_to_csv(assigned_shifts, filename="final_schedule.csv"):
+    # Calculate monthly hours per employee
+    monthly_hours = {}
+    for employee, shifts in assigned_shifts.items():
+        total_hours = 0
+        for shift in shifts:
+            start = datetime.strptime(shift["start"], "%H:%M")
+            end = datetime.strptime(shift["end"], "%H:%M")
+            duration = (end - start).seconds / 3600
+            if shift.get("lunch") != "None":
+                duration -= 1
+            total_hours += duration
+        monthly_hours[employee] = round(total_hours, 2)
+
+    with open(filename, mode="w", newline='', encoding="utf-8") as csvfile:
+        fieldnames = ["Employee", "Date", "Weekday", "Start", "End", "Lunch", "Duration", "Monthly Total Hours"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        
+        writer.writeheader()
+        
+        for employee, shifts in assigned_shifts.items():
+            first = True
+            for shift in shifts:
+                start = datetime.strptime(shift["start"], "%H:%M")
+                end = datetime.strptime(shift["end"], "%H:%M")
+                duration = (end - start).seconds / 3600
+                if shift.get("lunch") != "None":
+                    duration -= 1
+
+                date_obj = datetime.strptime(shift["date"], "%Y-%m-%d")
+                weekday = date_obj.strftime("%A")
+
+                writer.writerow({
+                    "Employee": employee,
+                    "Date": shift["date"],
+                    "Weekday": weekday,
+                    "Start": shift["start"],
+                    "End": shift["end"],
+                    "Lunch": shift.get("lunch", "None"),
+                    "Duration": round(duration, 2),
+                    "Monthly Total Hours": monthly_hours[employee] if first else ""
+                })
+                first = False
+
+    print(f"✅ Schedule exported to {filename}")
 
 if __name__ == "__main__":
     os.environ['WEB_MODE'] = "0"

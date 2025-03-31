@@ -74,12 +74,12 @@ def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expect
 
 
     # Compare the scheduled and expected hours
-    difference = float(total_expected_hours) - float(total_required_hours)
+    difference =  float(total_required_hours) - float(total_expected_hours)
     staffing_status = "Balanced"
     if difference > 0:
-        staffing_status = "Overstaffed"
-    elif difference < 0:
         staffing_status = "Understaffed"
+    elif difference < total_required_hours * 0.1:
+        staffing_status = "Overstaffed"
 
     result = {
     "total_scheduled_hours": round(total_scheduled_hours, 2),
