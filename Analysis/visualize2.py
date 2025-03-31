@@ -382,6 +382,9 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
     .unassigned-shifts ul {{
         margin-bottom: 0;
     }}
+    .shift.unassigned {{
+        background: #dc3545 !important; /* Bootstrap danger red */
+}}
     </style>
 </head>
 <body>
@@ -767,7 +770,9 @@ def generate_schedule_content(schedule_data, unassigned_shifts=None, staffing_su
                 end_percent = max(0, min(100, (end_min / total_minutes) * 100))
                 width_percent = max(0, min(100 - start_percent, end_percent - start_percent))
                 
-                content += f'<div class="shift" style="left:{start_percent}%; width:{width_percent}%"></div>'
+                shift_class = "shift unassigned" if shift.get("unassigned") else "shift"
+                content += f'<div class="{shift_class}" style="left:{start_percent}%; width:{width_percent}%"></div>'
+
                 
                 if shift["lunch"] != "None":
                     lunch_hour = int(shift["lunch"].split(":")[0])

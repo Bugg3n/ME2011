@@ -176,7 +176,8 @@ def inject_unassigned_into_schedule(assigned_by_date, unassigned_shifts):
             "start": shift["start"],
             "end": shift["end"],
             "lunch": "None",  # or leave out if not needed
-            "date": date
+            "date": date,
+            "unassigned": True
         })
 
     return assigned_by_date
