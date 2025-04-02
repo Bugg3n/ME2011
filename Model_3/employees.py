@@ -32,7 +32,6 @@ class Employee:
             raise ValueError("Weekend preference must be an int between 1 and 10.")
         
         self.weekend_preference = weekend_preference
-        self.weekly_sales_hours = None
         self.name = name.strip()
         self.employment_rate = employment_rate
         self.max_hours_per_week = employment_rate * 45
@@ -50,7 +49,6 @@ class Employee:
 
     def set_sales_hour(self, weekly_sales_hours): # Will be used to have the manager step in if needed
         if self.manager:
-            self.weekly_sales_hours = weekly_sales_hours
             self.max_hours_per_week = weekly_sales_hours
             return True
         else: 

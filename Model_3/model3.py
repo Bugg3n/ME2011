@@ -124,21 +124,22 @@ def try_assign_manager(assigned_shifts, employees, shift, monthly_hours):
     shift_start = datetime.strptime(shift["start"], "%H:%M")
     shift_end = datetime.strptime(shift["end"], "%H:%M")
     shift_hours = (shift_end - shift_start).seconds // 3600
+    date = datetime.strptime(shift["date"], "%Y-%m-%d").date()
+
 
     # Reject if not between 8–17
     if shift_start.hour < 8 or shift_end.hour > 17:
         return False
 
     # Reject if weekend (Saturday = 5, Sunday = 6)
-    shift_day = datetime.strptime(shift["date"], "%Y-%m-%d").weekday()
+    shift_day = date.weekday()
     if shift_day >= 5:
         return False
 
     for emp in employees:
-        if emp.manager and hasattr(emp, "weekly_sales_hours") and emp.weekly_sales_hours >= shift_hours:
+        if emp.manager and emp.get_total_weekly_hours(date) >= shift_hours:
             emp.assign_shift(shift)
             assigned_shifts[emp.name].append(shift)
-            emp.weekly_sales_hours -= shift_hours
             emp.monthly_assigned_hours += shift_hours
             return True
     return False
@@ -195,7 +196,7 @@ def try_swap_shift_to_manager(assigned_shifts, employees, unassigned_shift, mont
 
                     # Now recheck if employee can take the unassigned shift
                     if emp.is_available(unassigned_shift["date"], unassigned_shift["start"], unassigned_shift["end"], monthly_hours, debug=debug):
-                        print("employee available. Succesfull change")
+                        if debug: print("employee available. Succesfull change")
                         emp.assign_shift(unassigned_shift)
                         assigned_shifts[emp.name].append(unassigned_shift)
                         return True
