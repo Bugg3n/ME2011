@@ -144,13 +144,15 @@ def create_schedule(web_mode=False, web_params = None):
     
     summary_html = generate_employee_summary_html(df_summary)
 
-    with open("employee_summary.html", "w", encoding="utf-8") as f:
+    os.makedirs("HTML-files", exist_ok=True)
+
+    with open("HTML-files/employee_summary.html", "w", encoding="utf-8") as f:
         f.write(summary_html)
 
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
     
-    generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary)
+    generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary, output_path="HTML-files/monthly_schedule.html")
 
     export_schedule_to_csv(assigned_shifts, filename=f"csv-files/final_schedule_{YEAR}_{MONTH}.csv")
 

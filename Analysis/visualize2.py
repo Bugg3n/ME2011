@@ -22,7 +22,7 @@ def generate_employee_summary_html(df: pd.DataFrame) -> str:
     return df.to_html(index=False, classes="employee-summary-table", border=0)
 
 
-def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
+def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None, output_path="HTML-files/monthly_schedule.html"):
     if unassigned_shifts is None:
         unassigned_shifts = []
     if staffing_summary is None:
@@ -630,13 +630,12 @@ def generate_html(schedule_data, unassigned_shifts=None, staffing_summary=None):
 </body>
 </html>"""
 
-    file_path = "monthly_schedule.html"
-    with open(file_path, "w", encoding="utf-8") as file:
+    with open(output_path, "w", encoding="utf-8") as file:
         file.write(html)
     
     # Only open in browser if not in web mode
     if not os.environ.get('WEB_MODE'):
-        webbrowser.open(f"file:///{os.path.abspath(file_path)}")
+        webbrowser.open(f"file:///{os.path.abspath(output_path)}")
 
     return html
 

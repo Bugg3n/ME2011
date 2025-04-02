@@ -1,8 +1,6 @@
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-import threading
-import sys
 from main import create_schedule
 from Analysis.visualize2 import generate_schedule_content
 
@@ -21,12 +19,12 @@ class ScheduleServer(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            with open('monthly_schedule.html', 'rb') as f:
+            with open('HTML-files/monthly_schedule.html', 'rb') as f:
                 self.wfile.write(f.read())
 
         elif self.path == '/employee_summary.html':
             try:
-                with open('employee_summary.html', 'rb') as f:
+                with open('HTML-files/employee_summary.html', 'rb') as f:
                     self.send_response(200)
                     self.send_header('Content-type', 'text/html')
                     self.end_headers()
