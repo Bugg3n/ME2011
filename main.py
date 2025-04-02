@@ -5,7 +5,6 @@ from Model_3.employees import *
 import os
 import calendar
 import json
-# from visualize import main as visualize_model_3
 from Analysis.visualize2 import generate_html, generate_employee_summary_html
 from Analysis.analyze_employees import *
 from webserver.webserver import *
@@ -17,7 +16,6 @@ MONTH = 2
 STORE_ID = "1"
 SALES_CAPACITY = 12  # Customers per employee per hour
 SCHEDULE_FOLDER = "schedules"
-SALES_CAPACITY = 12
 CUSTOMER_FLOW_PER_HOUR = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
 DEBUG = False
 STORE_OPEN = "8:00"
@@ -84,9 +82,6 @@ def create_schedule(web_mode=False, web_params = None):
 
     print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
     
-
-
-    print("###############################################################################################")
     # Step 1: Generate staffing needs (Model 1)
     monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, sales_capacity)
 
@@ -98,7 +93,7 @@ def create_schedule(web_mode=False, web_params = None):
         year=YEAR,
         month=MONTH,
         store_id=STORE_ID,
-        monthly_staffing=monthly_staffing,  # Passing this instead of calling model1 inside model2
+        monthly_staffing=monthly_staffing,
         visualize=False  # Set to True if you want to visualize daily schedules
     )
     
@@ -122,7 +117,6 @@ def create_schedule(web_mode=False, web_params = None):
         max_daily_hours = MAX_DAILY_HOURS, 
         )
     
-    print("model 3 is done")
     # Save final schedule
     schedule_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}.json")
     with open(schedule_filename, "w") as f:
@@ -256,12 +250,15 @@ def export_schedule_to_csv(assigned_shifts, filename="final_schedule.csv"):
 
     print(f"✅ Schedule exported to {filename}")
 
-if __name__ == "__main__":
+def main():
     os.environ['WEB_MODE'] = "0"
-    
     
     # Start server (which will now auto-open browser)
     create_schedule()
     print("Starting server at http://localhost:8000")
     print("Browser should open automatically...")
     run_server()
+
+
+if __name__ == "__main__":
+    main()
