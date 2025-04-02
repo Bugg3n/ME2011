@@ -32,9 +32,6 @@ def handle_new_periods(employees, day, date_str, week_num, last_month_schedule, 
     if day == 1:
         reset_all_monthly_hours(employees)
 
-    if datetime.strptime(date_str, "%Y-%m-%d").weekday() == 0:
-        reset_all_weekly_hours(employees)
-
     if last_month_schedule:
         carryover_hours = track_carryover_weekly_hours(employees, last_month_schedule, year, month)
         for emp in employees:
@@ -44,10 +41,11 @@ def handle_new_periods(employees, day, date_str, week_num, last_month_schedule, 
 def assign_shift_to_best_employee(shift, date_str, employees, assigned_shifts, monthly_hours, weekly_hours, week_num, max_hours, unassigned_shifts, debug):
     shift_start, shift_end, shift_lunch = shift["start"], shift["end"],shift["lunch"]
     best_employee, best_fit_score = None, float('-inf')
+    date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
     for emp in employees:
         if not emp.manager:
-            fit_score = get_fit_score(emp, date_str, shift_start, shift_end, max_hours, debug)
+            fit_score = get_fit_score(emp, date, shift_start, shift_end, max_hours, debug)
             if fit_score and fit_score > best_fit_score:
                 best_fit_score = fit_score
                 best_employee = emp
@@ -91,7 +89,8 @@ def cover_remaining_shifts(assigned_shifts, unassigned_shifts, employees, year, 
         assigned = (
             try_extend_under_scheduled(assigned_shifts, employees, shift, store_open_time, store_close_time, monthly_hours) or
             try_assign_manager(assigned_shifts, employees, shift, monthly_hours) or
-            try_assign_overtime(assigned_shifts, employees, shift, monthly_hours)
+            try_assign_overtime(assigned_shifts, employees, shift, monthly_hours) or
+            try_swap_shift_to_manager(assigned_shifts, employees, shift, monthly_hours)
         )
         if not assigned:
             
@@ -122,7 +121,19 @@ def try_extend_under_scheduled(assigned_shifts, employees, shift, store_open_tim
 
 
 def try_assign_manager(assigned_shifts, employees, shift, monthly_hours):
-    shift_hours = (datetime.strptime(shift["end"], "%H:%M") - datetime.strptime(shift["start"], "%H:%M")).seconds // 3600
+    shift_start = datetime.strptime(shift["start"], "%H:%M")
+    shift_end = datetime.strptime(shift["end"], "%H:%M")
+    shift_hours = (shift_end - shift_start).seconds // 3600
+
+    # Reject if not between 8–17
+    if shift_start.hour < 8 or shift_end.hour > 17:
+        return False
+
+    # Reject if weekend (Saturday = 5, Sunday = 6)
+    shift_day = datetime.strptime(shift["date"], "%Y-%m-%d").weekday()
+    if shift_day >= 5:
+        return False
+
     for emp in employees:
         if emp.manager and hasattr(emp, "weekly_sales_hours") and emp.weekly_sales_hours >= shift_hours:
             emp.assign_shift(shift)
@@ -130,8 +141,83 @@ def try_assign_manager(assigned_shifts, employees, shift, monthly_hours):
             emp.weekly_sales_hours -= shift_hours
             emp.monthly_assigned_hours += shift_hours
             return True
-    
     return False
+
+def try_swap_shift_to_manager(assigned_shifts, employees, unassigned_shift, monthly_hours, debug = False):
+    """
+    Attempts to let a manager take over a regular employee's weekday day shift,
+    so that the employee can work the unassigned evening/weekend shift.
+    """
+    shift_date = datetime.strptime(unassigned_shift["date"], "%Y-%m-%d")
+    shift_start = datetime.strptime(unassigned_shift["start"], "%H:%M")
+    shift_end = datetime.strptime(unassigned_shift["end"], "%H:%M")
+    shift_hours = (shift_end - shift_start).seconds // 3600
+    shift_day = shift_date.weekday()  # 0=Mon, 6=Sun
+    if debug: print(f"Trying to fix the unassigned shift: {shift_date}, from {shift_start} until {shift_end}")
+
+
+    # Proceed only if the unassigned shift is an evening or weekend
+    if shift_day < 5 and (shift_start.hour >= 8 and shift_end.hour <= 17):
+        if debug: print("Not an evening shift.")
+        return False
+
+
+    for emp in employees:
+        if emp.manager:
+            continue
+        if debug:
+            print(f"Testing to swap shift with: {emp.name}")
+            no_suiting_swap = True
+            mananger_not_available = False
+            employee_still_not_available = False
+        # Look for a swappable shift (weekday, daytime)
+        for shift in assigned_shifts.get(emp.name, []):
+            s_date = datetime.strptime(shift["date"], "%Y-%m-%d")
+            s_day = s_date.weekday()
+            s_start = datetime.strptime(shift["start"], "%H:%M")
+            s_end = datetime.strptime(shift["end"], "%H:%M")
+            s_hours = (s_end - s_start).seconds // 3600
+            lunch = 1 if shift.get("lunch", "None") != "None" else 0
+            s_hours -= lunch
+            if not (0 <= s_day <= 4 and 8 <= s_start.hour and s_end.hour <= 17):
+                continue  # Skip non-daytime or weekend shifts
+            # Find manager who can take this day shift
+            for mgr in employees:
+                if not mgr.manager:
+                    continue
+                if mgr.is_available(shift["date"], shift["start"], shift["end"], monthly_hours, debug = debug):
+                    no_suiting_swap = False
+                    # Swap the shift
+                    emp.remove_shift(shift)
+                    mgr.assign_shift(shift)
+                    assigned_shifts[emp.name].remove(shift)
+                    assigned_shifts[mgr.name].append(shift)
+
+                    # Now recheck if employee can take the unassigned shift
+                    if emp.is_available(unassigned_shift["date"], unassigned_shift["start"], unassigned_shift["end"], monthly_hours, debug=debug):
+                        print("employee available. Succesfull change")
+                        emp.assign_shift(unassigned_shift)
+                        assigned_shifts[emp.name].append(unassigned_shift)
+                        return True
+
+                    # If it fails, undo
+                    employee_still_not_available = True
+                    emp.assign_shift(shift)
+                    mgr.remove_shift(shift)
+                    assigned_shifts[emp.name].append(shift)
+                    assigned_shifts[mgr.name].remove(shift)
+                else: mananger_not_available = True
+    if debug:
+        print(f"swap failed due to: ")
+        print(f"manager not available: {mananger_not_available}")
+        print(f"no suiting swap: {no_suiting_swap}")
+        print(f"employee still not available: {employee_still_not_available}")
+
+
+    return False
+
+
+
 
 def try_assign_overtime(assigned_shifts, employees, shift, monthly_hours):
     
@@ -214,10 +300,10 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
         preference_bonus = 5  # Neutral preference for midday shifts
 
     # Calculate workload factor (favor employees with fewer assigned hours)
-    workload_factor = (1 - emp.assigned_hours / emp.max_hours_per_week) * 10
+    workload_factor = (1 - emp.get_total_weekly_hours(shift_date) / emp.max_hours_per_week) * 10
 
     # Weekend preference bonus
-    shift_day = datetime.strptime(shift_date, "%Y-%m-%d").weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
+    shift_day = shift_date.weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
     if shift_day in (5, 6):  # If Saturday or Sunday
         weekend_bonus = emp.weekend_preference
     else:
@@ -225,11 +311,6 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
 
     # Final fit score
     return preference_bonus + workload_factor + weekend_bonus
-
-def reset_all_weekly_hours(employees):
-    """Resets weekly hour counters for all employees at the start of a new week."""
-    for emp in employees:
-        emp.reset_weekly_schedule()
 
 def reset_all_monthly_hours(employees):
     """Resets monthly hour counters for all employees at the start of a new month."""

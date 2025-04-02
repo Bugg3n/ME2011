@@ -39,7 +39,6 @@ class Employee:
         self.early_late_preference = early_late_preference # 1 = Likes morning shifts, 10 = Likes Evening shifts.
         self.spread = spread
         self.manager = manager
-        self.assigned_hours = 0
         self.monthly_assigned_hours = 0
         self.schedule = []
         self.past_schedules = []
@@ -47,11 +46,12 @@ class Employee:
         self.emp_id = emp_id
     
         if self.manager:
-            self.set_sales_hour(5)
+            self.set_sales_hour(10)
 
     def set_sales_hour(self, weekly_sales_hours): # Will be used to have the manager step in if needed
         if self.manager:
             self.weekly_sales_hours = weekly_sales_hours
+            self.max_hours_per_week = weekly_sales_hours
             return True
         else: 
             return False
@@ -75,6 +75,7 @@ class Employee:
 
         # Check if employee is unavailable on that specific date
         if shift_date in self.unavailable_dates:
+            if debug: print("Unavailable date")
             return False  
 
         shift_start_time = datetime.strptime(shift_start, "%H:%M")
@@ -88,12 +89,11 @@ class Employee:
                 return False  # The employee already has a shift that day, so unavailable
 
         # Check if adding this shift exceeds max weekly hours
-        if self.assigned_hours + shift_hours > self.max_hours_per_week:
+        if self.get_total_weekly_hours(shift_date) + shift_hours > self.max_hours_per_week:
             if debug: print("too many hours this week")
             return False  
         
-        if self.monthly_assigned_hours + shift_hours > monthly_max_hours:
-
+        if self.get_total_monthly_hours() + shift_hours > monthly_max_hours:
             if debug: print("too many hours this month")
             return False  
 
@@ -112,16 +112,55 @@ class Employee:
         shift_end_time = datetime.strptime(shift["end"], "%H:%M")
         shift_hours = (shift_end_time - shift_start_time).seconds // 3600  # Convert to hours
         lunch_break = 1 if shift["lunch"] != "None" else 0
-        self.assigned_hours += shift_hours-lunch_break
+        # self.assigned_hours += shift_hours-lunch_break
         self.monthly_assigned_hours += shift_hours-lunch_break
         self.schedule.append({
             "date": shift["date"] if isinstance(shift["date"], str) else shift["date"].strftime("%Y-%m-%d"),
             "start": shift["start"],
             "end": shift["end"]
         })
-        
-    def reset_weekly_schedule(self):
-        self.assigned_hours = 0
+
+    def remove_shift(self, shift):
+        """Removes a shift from the employee's schedule and updates assigned hours."""
+        shift_start_time = datetime.strptime(shift["start"], "%H:%M")
+        shift_end_time = datetime.strptime(shift["end"], "%H:%M")
+        shift_hours = (shift_end_time - shift_start_time).seconds // 3600
+        lunch_break = 1 if shift.get("lunch", "None") != "None" else 0
+
+        self.monthly_assigned_hours -= (shift_hours - lunch_break)
+
+        # Remove from schedule
+        self.schedule = [s for s in self.schedule if not (
+            s["date"] == shift["date"] and
+            s["start"] == shift["start"] and
+            s["end"] == shift["end"]
+        )]
+
+    def get_total_weekly_hours(self, date_obj: date):
+        """
+        Returns total hours assigned during the same ISO week as the given date.
+        :param date_obj: A datetime.date or datetime.datetime object.
+        :return: Total hours worked in that ISO week.
+        """
+        if isinstance(date_obj, datetime):
+            date_obj = date_obj.date()
+
+        target_week = date_obj.isocalendar()[1]
+        total = 0
+
+        for shift in self.schedule:
+            shift_date = datetime.strptime(shift["date"], "%Y-%m-%d").date()
+            if shift_date.isocalendar()[1] == target_week:
+                start = datetime.strptime(shift["start"], "%H:%M")
+                end = datetime.strptime(shift["end"], "%H:%M")
+                lunch_break = 1 if shift.get("lunch", "None") != "None" else 0
+                total += ((end - start).seconds // 3600) - lunch_break
+
+        return total
+
+    def get_total_monthly_hours(self):
+        return self.monthly_assigned_hours
+    
 
     def reset_monthly_schedule(self):
         if self.schedule:

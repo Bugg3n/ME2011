@@ -40,8 +40,12 @@ HOURS_PER_MONTH = {
 
 #TODO
 # Färdigställa modell 3
-    # Vikta den som blir tilldelad pass baserat på svaren jämfört med varandra (probalistiskt) + implementera spread här
+    # Implementera spread
     # Fixa så chefen endast arbetar kontorstider. + Skapa en iterativ schemaläggning som lägger in chefen dagtid även om det är kvällspass som inte kan fyllas.
+
+        # När vi får data från Kjell:
+        # Experimentera med olika sätt att välja den bästa employeen. Probabalistiskt eller deterministiskt?
+        
 
 # Städa model2. Ta bort funktioner som inte används
 # Lägg till ReadMe-fil och förklaringar för varje modul
