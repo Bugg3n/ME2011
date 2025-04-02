@@ -2,10 +2,6 @@ from .employees import *
 from datetime import datetime, timedelta
 import calendar
 
-from .employees import *
-from datetime import datetime, timedelta
-import calendar
-
 def assign_shifts_to_employees_monthly(monthly_shifts, employees, year, month, last_month_schedule=None, max_hours=170, debug=False):
     assigned_shifts = {emp.name: [] for emp in employees}
     unassigned_shifts = []
