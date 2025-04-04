@@ -3,8 +3,8 @@ from employees import Employee
 from datetime import date
 
 employees = [
-    Employee(name="BC", employment_rate=1.0, early_late_preference=5, spread=5, unavailable_dates=[], overtime=False, manager=True, weekend_preference=6),
-    Employee(name="Alice", employment_rate=1.0, early_late_preference=5, spread=5, unavailable_dates=["2025-03-15", "2025-03-22"], overtime=True, weekend_preference=8),
+    # Employee(name="BC", employment_rate=1.0, early_late_preference=5, spread=5, unavailable_dates=[], overtime=False, manager=True, weekend_preference=6),
+    Employee(name="Alice", employment_rate=0.8, early_late_preference=5, spread=5, unavailable_dates=["2025-03-15", "2025-03-22"], overtime=True, weekend_preference=8),
     Employee(name="Bob", employment_rate=0.8, early_late_preference=8, spread=4, unavailable_dates=[date(2025, 3, 17)], weekend_preference=9),
     Employee(name="Ceasar", employment_rate=0.6, early_late_preference=7, spread=3, unavailable_dates=[date(2025, 3, 18)], overtime=True, weekend_preference=1),
     Employee(name="David", employment_rate=0.5, early_late_preference=1, spread=2, unavailable_dates=[date(2025, 3, 19)], weekend_preference=3),
