@@ -7,10 +7,11 @@ import sys
 sys.path.insert(1, os.getcwd())
 from Model_3 import employees, model3
 
+
 def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, target_employment_rate=0.8):
     """
     Estimate the minimum number of employees needed to cover all shifts in a month,
-    based on target employment rate and scheduling constraints.
+    based on target employment rate, scheduling constraints, and max daily concurrency.
 
     Args:
         monthly_schedule (dict): A dictionary where each key is a date string (YYYY-MM-DD) and each value contains "shifts".
@@ -25,24 +26,25 @@ def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, ta
     employee_capacity = full_time_monthly_hours * target_employment_rate
 
     work_days = set()
+    max_employees_per_day = 0
 
     for date_str, info in monthly_schedule.items():
         shifts = info.get("shifts", [])
         if shifts:
             work_days.add(date_str)
+            max_employees_per_day = max(max_employees_per_day, len(shifts))
 
-    # Max shifts one employee can take based on hours and 1 shift/day constraint
+    avg_shift_length = total_required_hours / total_shifts_needed if total_shifts_needed > 0 else 0
+
     max_shifts_per_employee = min(
         len(work_days),
-        int(employee_capacity / (total_required_hours/total_shifts_needed))
+        int(employee_capacity / avg_shift_length) if avg_shift_length else 0
     )
 
-    # Estimate based on hours
     employees_by_hours = ceil(total_required_hours / employee_capacity)
-    # Estimate based on shift constraints
-    employees_by_shifts = ceil(total_shifts_needed / max_shifts_per_employee)
+    employees_by_shifts = ceil(total_shifts_needed / max_shifts_per_employee) if max_shifts_per_employee > 0 else 0
 
-    employees_needed = max(employees_by_hours, employees_by_shifts)
+    employees_needed = max(employees_by_hours, employees_by_shifts, max_employees_per_day)
 
     return {
         "employees_needed": employees_needed,
@@ -52,6 +54,7 @@ def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, ta
         "max_shifts_per_employee": max_shifts_per_employee,
         "employees_by_hours": employees_by_hours,
         "employees_by_shifts": employees_by_shifts,
+        "max_employees_needed_one_day": max_employees_per_day,
         "work_days_count": len(work_days)
     }
 

@@ -405,9 +405,7 @@ def extend_shifts_to_fulfill_contracts(employees, assigned_shifts_by_employee, s
             still_needs_extension.append((emp, shifts))
 
     for emp, shifts in still_needs_extension:
-        print(f"Still need extension accessed: {emp}")
         hours_needed = emp.employment_rate * monthly_hours - emp.monthly_assigned_hours
-        print(f"hours needed: {hours_needed}")
         for shift in shifts:
             if hours_needed <= 0:
                 break
