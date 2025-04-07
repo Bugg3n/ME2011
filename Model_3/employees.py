@@ -65,8 +65,10 @@ class Employee:
         if debug: print({f"Checking if {self.name} is available for the shift on {shift_date} between {shift_start} and {shift_end}"})
         if overtime:
             monthly_max_hours = monthly_max_hours
+            weekly_max_hours = 40
         else:
             monthly_max_hours = int(monthly_max_hours * self.employment_rate)
+            weekly_max_hours = self.get_total_weekly_hours(shift_date)
 
         if isinstance(shift_date, str):
             shift_date = date.fromisoformat(shift_date)
@@ -87,7 +89,8 @@ class Employee:
                 return False  # The employee already has a shift that day, so unavailable
 
         # Check if adding this shift exceeds max weekly hours
-        if self.get_total_weekly_hours(shift_date) + shift_hours > self.max_hours_per_week:
+
+        if self.get_total_weekly_hours(shift_date) + shift_hours > weekly_max_hours:
             if debug: print("too many hours this week")
             return False  
         

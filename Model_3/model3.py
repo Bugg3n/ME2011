@@ -286,32 +286,58 @@ def get_fit_score(emp, shift_date, shift_start, shift_end, month_max_hours, debu
     if not emp.is_available(shift_date, shift_start, shift_end, month_max_hours, debug=debug):
         return None
 
-    shift_start_hour = int(shift_start.split(":")[0])
-    shift_end_hour = int(shift_end.split(":")[0])
+    time_bonus = calculate_time_of_day_bonus(emp, shift_start, shift_end)
+    workload_bonus = calculate_workload_bonus(emp, shift_date)
+    weekend_bonus = calculate_weekend_bonus(emp, shift_date)
+    spread_bonus = calculate_spread_bonus(emp, shift_date, emp.spread)
 
-    early_threshold = 17  # Before 12:00 is considered an early shift
-    late_threshold = 18   # After 17:00 is considered a late shift
+    return time_bonus + workload_bonus + weekend_bonus + spread_bonus
 
-    # Convert the single preference value (1 = prefers early, 10 = prefers late)
-    if shift_end_hour < early_threshold:
-        preference_bonus = 10 - emp.early_late_preference  # Prefers early shifts
-    elif shift_end_hour >= late_threshold:
-        preference_bonus = emp.early_late_preference  # Prefers late shifts
+
+def calculate_time_of_day_bonus(emp, shift_start, shift_end):
+    start_hour = int(shift_start.split(":")[0])
+    end_hour = int(shift_end.split(":")[0])
+    if end_hour < 17:
+        return 10 - emp.early_late_preference
+    elif end_hour >= 18:
+        return emp.early_late_preference
+    return 5  # Neutral for midday
+
+def calculate_workload_bonus(emp, shift_date):
+    current_week_hours = emp.get_total_weekly_hours(shift_date)
+    return (1 - current_week_hours / emp.max_hours_per_week) * 20
+
+def calculate_weekend_bonus(emp, shift_date):
+    weekday = shift_date.weekday()
+    return emp.weekend_preference if weekday >= 5 else 0
+
+
+def calculate_spread_bonus(emp, proposed_date, spread_preference):
+    """
+    Calculates how well this shift fits with the employee's spread preference,
+    normalized by their employment rate.
+    """
+    scheduled_dates = [datetime.strptime(shift["date"], "%Y-%m-%d").date() for shift in emp.schedule]
+    
+    if not scheduled_dates:
+        return 5  # Neutral if nothing scheduled yet
+
+    # Minimum number of days between existing shifts and the proposed one
+    min_day_diff = min(abs((proposed_date - s_date).days) for s_date in scheduled_dates)
+
+    # Normalize expected spacing based on employment rate
+    expected_spacing = 1 / emp.employment_rate if emp.employment_rate > 0 else 7  # Avoid div-by-zero
+    spread_factor = min_day_diff / expected_spacing
+
+    if spread_preference >= 6:
+        # Prefers more spread → high bonus for high spread_factor
+        bonus = spread_factor * (spread_preference / 10)
     else:
-        preference_bonus = 5  # Neutral preference for midday shifts
+        # Prefers clustered shifts → bonus for low spread_factor
+        bonus = (1 / (1 + spread_factor)) * (11 - spread_preference)
 
-    # Calculate workload factor (favor employees with fewer assigned hours)
-    workload_factor = (1 - emp.get_total_weekly_hours(shift_date) / emp.max_hours_per_week) * 10
+    return bonus
 
-    # Weekend preference bonus
-    shift_day = shift_date.weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
-    if shift_day in (5, 6):  # If Saturday or Sunday
-        weekend_bonus = emp.weekend_preference
-    else:
-        weekend_bonus = 0
-
-    # Final fit score
-    return preference_bonus + workload_factor + weekend_bonus
 
 def reset_all_monthly_hours(employees):
     """Resets monthly hour counters for all employees at the start of a new month."""
