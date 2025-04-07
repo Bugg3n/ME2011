@@ -68,7 +68,7 @@ class Employee:
             weekly_max_hours = 40
         else:
             monthly_max_hours = int(monthly_max_hours * self.employment_rate)
-            weekly_max_hours = self.get_total_weekly_hours(shift_date)
+            weekly_max_hours = self.max_hours_per_week
 
         if isinstance(shift_date, str):
             shift_date = date.fromisoformat(shift_date)
@@ -145,6 +145,9 @@ class Employee:
         """
         if isinstance(date_obj, datetime):
             date_obj = date_obj.date()
+        elif isinstance(date_obj, str):
+            date_obj = datetime.strptime(date_obj, "%Y-%m-%d").date()
+            
 
         target_week = date_obj.isocalendar()[1]
         total = 0
