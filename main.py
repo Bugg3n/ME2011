@@ -106,7 +106,7 @@ def create_schedule(web_mode=False, web_params = None):
 
     
     # Step 3: Assign shifts to employees (Model 3)
-    assigned_shifts, unassigned_shifts = model3.create_schedule(
+    assigned_shifts, unassigned_shifts, assigned_shifts_by_date = model3.create_schedule(
         monthly_schedule, 
         employees, 
         YEAR, MONTH, 
@@ -118,7 +118,6 @@ def create_schedule(web_mode=False, web_params = None):
         max_daily_hours = MAX_DAILY_HOURS, 
         )
     
-    assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
     assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
     df_summary, staffing_summary = analyze_employees(employees=employees, assigned_shifts=assigned_shifts, unassigned_shifts=unassigned_shifts, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], total_required_hours = total_required_hours)
     export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date, df_summary, staffing_summary)

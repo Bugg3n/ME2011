@@ -529,6 +529,6 @@ def create_schedule(monthly_schedule, employees, YEAR, MONTH, last_month_schedul
         max_daily_hours=max_daily_hours,
         monthly_hours=max_hours
     )
-    
+    assigned_shifts_by_date = transform_schedule_format(assigned_shifts, YEAR, MONTH)
 
-    return assigned_shifts, unassigned_shifts
+    return assigned_shifts, unassigned_shifts, assigned_shifts_by_date
