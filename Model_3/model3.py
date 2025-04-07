@@ -77,7 +77,6 @@ def assign_shift(emp, shift, date_str, assigned_shifts, monthly_hours, weekly_ho
     weekly_hours[emp.name][week_num] += shift_hours
     monthly_hours[emp.name] += shift_hours
 
-# Next step would be to extract parts from cover_remaining_shifts, extend_shifts_to_fulfill_contracts, and create_schedule in the same manner.
 
 def cover_remaining_shifts(assigned_shifts, unassigned_shifts, employees, year, month, store_open, store_close, max_daily_hours, monthly_hours):
     store_open_time = datetime.strptime(store_open, "%H:%M")

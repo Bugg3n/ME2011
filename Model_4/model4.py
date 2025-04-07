@@ -8,7 +8,7 @@ sys.path.insert(1, os.getcwd())
 from Model_3 import employees, model3
 
 
-def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, target_employment_rate=0.8):
+def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, target_employment_rate=0.8, efficiency_factor = 0.9):
     """
     Estimate the minimum number of employees needed to cover all shifts in a month,
     based on target employment rate, scheduling constraints, and max daily concurrency.
@@ -23,7 +23,7 @@ def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, ta
     """
 
     total_required_hours, total_shifts_needed = calculate_average_shift_length(monthly_schedule)
-    employee_capacity = full_time_monthly_hours * target_employment_rate
+    employee_capacity = full_time_monthly_hours * target_employment_rate * efficiency_factor
 
     work_days = set()
     max_employees_per_day = 0
@@ -82,7 +82,7 @@ def merge_employees(emp1, emp2):
         early_late_preference=int((emp1.early_late_preference + emp2.early_late_preference) / 2),
         weekend_preference=int((emp1.weekend_preference + emp2.weekend_preference) / 2),
         spread=int((emp1.spread + emp2.spread) / 2),
-        manager=emp1.manager or emp2.manager  # or False if you want only real managers
+        manager=emp1.manager or emp2.manager
     )
     return merged
 
@@ -170,3 +170,42 @@ def optimize_staffing_by_merging(monthly_schedule, employees, year, month, last_
                 break
 
     return best_employees
+
+def test_minimum_staffing_feasibility(monthly_schedule, year, month, last_month_schedule, hours_per_month, open = "8:00", close = "22:00", max_daily_hours = 10, target_employment_rate = 0.8, efficiency_factor=0.9):
+    result = calculate_minimum_staffing(monthly_schedule, hours_per_month, target_employment_rate, efficiency_factor)
+    num_employees = result["employees_needed"]
+    employees = generate_test_employees(num_employees, rate=0.8)
+
+    assigned, unassigned, _ = model3.create_schedule(
+        monthly_schedule,
+        employees,
+        year,
+        month,
+        last_month_schedule,
+        max_hours=hours_per_month,
+        debug=False,
+        store_open=open,
+        store_close=close,
+        max_daily_hours=10
+    )
+
+    result["can_fill_schedule"] = len(unassigned) == 0
+    result["unassigned_count"] = len(unassigned)
+    return result
+
+from Model_3.employees import Employee
+
+def generate_test_employees(num_employees, rate=0.8):
+    return [
+        Employee(
+            name=f"AutoEmp_{i+1}",
+            employment_rate=rate,
+            early_late_preference=5,
+            weekend_preference=5,
+            spread=5,
+            manager=False
+        )
+        for i in range(num_employees)
+    ]
+
+

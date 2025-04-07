@@ -23,6 +23,7 @@ STORE_OPEN = "8:00"
 STORE_CLOSE = "22:00"
 MAX_DAILY_HOURS = 10
 TARGET_EMPLOYMENT_RATE = 0.8
+EFFICIENCY_FACTOR = 0.95
 
 HOURS_PER_MONTH = {
     1: 176,
@@ -124,8 +125,9 @@ def create_schedule(web_mode=False, web_params = None):
     df_summary, staffing_summary = analyze_employees(employees=employees, assigned_shifts=assigned_shifts, unassigned_shifts=unassigned_shifts, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], total_required_hours = total_required_hours)
     export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date, df_summary, staffing_summary)
 
-    print(model4.calculate_minimum_staffing(monthly_schedule, HOURS_PER_MONTH[MONTH], target_employment_rate=TARGET_EMPLOYMENT_RATE))
-    best_employees = model4.optimize_staffing_by_merging(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, HOURS_PER_MONTH[MONTH])
+    print(model4.test_minimum_staffing_feasibility(monthly_schedule, YEAR, MONTH, last_month_schedule, HOURS_PER_MONTH[MONTH], open = STORE_OPEN, close = STORE_CLOSE, max_daily_hours = MAX_DAILY_HOURS, target_employment_rate=TARGET_EMPLOYMENT_RATE, efficiency_factor=EFFICIENCY_FACTOR))
+    
+    best_employees = model4.optimize_staffing_by_merging(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, HOURS_PER_MONTH[MONTH])    
     for emp in best_employees:
         print(f"name: {emp.name}, emp_rate: {emp.employment_rate}")
 
@@ -147,6 +149,7 @@ def export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date,
 
     print(f"✅ Final employee schedule saved to {schedule_filename}")
 
+    export_schedule_to_csv(assigned_shifts, filename=f"csv-files/final_schedule_{YEAR}_{MONTH}.csv")
 
     schedule_by_date_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}_by_date.json")
     with open(schedule_by_date_filename, "w") as f:
@@ -163,8 +166,6 @@ def export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date,
     print(f"📊 Opening schedule visualization...")
     
     generate_html(assigned_shifts_by_date, unassigned_shifts, staffing_summary, output_path="HTML-files/monthly_schedule.html")
-
-    export_schedule_to_csv(assigned_shifts, filename=f"csv-files/final_schedule_{YEAR}_{MONTH}.csv")
 
 
 def inject_unassigned_into_schedule(assigned_by_date, unassigned_shifts):
