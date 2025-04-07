@@ -2,7 +2,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 from main import create_schedule
-from Analysis.visualize2 import generate_schedule_content
+from visualize import generate_schedule_content
 
 
 class ScheduleServer(BaseHTTPRequestHandler):

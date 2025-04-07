@@ -5,8 +5,8 @@ from Model_3.employees import *
 import os
 import calendar
 import json
-from Analysis.visualize2 import generate_html, generate_employee_summary_html
-from Analysis.analyze_employees import *
+from visualize import generate_html, generate_employee_summary_html
+from Model_4.analyze_employees import *
 from webserver.webserver import *
 import csv
 
