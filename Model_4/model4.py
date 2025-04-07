@@ -1,5 +1,11 @@
 from math import ceil
+from itertools import combinations
 from datetime import datetime
+import os
+import sys
+# insert root directory into python module search path
+sys.path.insert(1, os.getcwd())
+from Model_3 import employees, model3
 
 def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, target_employment_rate=0.8):
     """
@@ -15,24 +21,20 @@ def calculate_minimum_staffing(monthly_schedule, full_time_monthly_hours=170, ta
         dict: Estimated employee count and key figures.
     """
 
-    avg_shift_length = calculate_average_shift_length(monthly_schedule)
+    total_required_hours, total_shifts_needed = calculate_average_shift_length(monthly_schedule)
     employee_capacity = full_time_monthly_hours * target_employment_rate
 
-    total_required_hours = 0
-    total_shifts_needed = 0
     work_days = set()
 
     for date_str, info in monthly_schedule.items():
         shifts = info.get("shifts", [])
-        total_shifts_needed += len(shifts)
-        total_required_hours += len(shifts) * avg_shift_length
         if shifts:
             work_days.add(date_str)
 
     # Max shifts one employee can take based on hours and 1 shift/day constraint
     max_shifts_per_employee = min(
         len(work_days),
-        int(employee_capacity / avg_shift_length)
+        int(employee_capacity / (total_required_hours/total_shifts_needed))
     )
 
     # Estimate based on hours
@@ -68,14 +70,100 @@ def calculate_average_shift_length(monthly_schedule):
             total_hours += shift_length
             total_shifts += 1
 
-    if total_shifts == 0:
-        return 0.0
+    return total_hours, total_shifts
 
-    return total_hours / total_shifts
+def merge_employees(emp1, emp2):
+    merged = employees.Employee(
+        name=f"{emp1.name}_{emp2.name}_merged",
+        employment_rate=min(1, emp1.employment_rate + emp2.employment_rate),
+        early_late_preference=int((emp1.early_late_preference + emp2.early_late_preference) / 2),
+        weekend_preference=int((emp1.weekend_preference + emp2.weekend_preference) / 2),
+        spread=int((emp1.spread + emp2.spread) / 2),
+        manager=emp1.manager or emp2.manager  # or False if you want only real managers
+    )
+    return merged
 
-def main():
-    print("Nothing")
+def optimize_staffing_by_merging(monthly_schedule, employees, year, month, last_month_schedule, max_hours):
+    best_employees = employees[:]
+    improved = True
 
+    while improved:
+        improved = False
 
-if __name__ == "__main__":
-    main()
+        # Sort by employment rate ascending
+        best_employees.sort(key=lambda e: e.employment_rate)
+
+        # Try pair merges first
+        for i in range(len(best_employees)):
+            for j in range(i + 1, len(best_employees)):
+                e1, e2 = best_employees[i], best_employees[j]
+
+                if e1.employment_rate + e2.employment_rate > 1.0:
+                    continue
+
+                merged = merge_employees(e1, e2)
+                trial_employees = (
+                    best_employees[:i]
+                    + best_employees[i+1:j]
+                    + best_employees[j+1:]
+                    + [merged]
+                )
+
+                try:
+                    assigned, unassigned, _ = model3.create_schedule(
+                        monthly_schedule,
+                        trial_employees,
+                        year,
+                        month,
+                        last_month_schedule,
+                        max_hours
+                    )
+                    if not unassigned:
+                        print(f"✅ Merged {e1.name} and {e2.name}")
+                        best_employees = trial_employees
+                        improved = True
+                        break
+                except Exception as e:
+                    print(f"⚠️ Merge error ({e1.name}+{e2.name}): {e}")
+            if improved:
+                break
+
+        # Now try merging 3 into 2
+        if not improved:
+            for e1, e2, e3 in combinations(best_employees, 3):
+                total_rate = e1.employment_rate + e2.employment_rate + e3.employment_rate
+                if total_rate <= 2.0:
+                    # Make two new employees at equal rate
+                    rate_each = total_rate / 2
+                    merged1 = merge_employees(e1, e2)
+                    merged1.name += "_1"
+                    merged1.employment_rate = rate_each
+
+                    merged2 = merge_employees(e1, e3)  # doesn't really matter which
+                    merged2.name += "_2"
+                    merged2.employment_rate = rate_each
+
+                    trial_employees = [
+                        emp for emp in best_employees if emp not in [e1, e2, e3]
+                    ] + [merged1, merged2]
+
+                    try:
+                        assigned, unassigned, _ = model3.create_schedule(
+                            monthly_schedule,
+                            trial_employees,
+                            year,
+                            month,
+                            last_month_schedule,
+                            max_hours
+                        )
+                        if not unassigned:
+                            print(f"✅ Merged {e1.name}, {e2.name}, {e3.name} into 2 employees at {rate_each:.2f}")
+                            best_employees = trial_employees
+                            improved = True
+                            break
+                    except Exception as e:
+                        print(f"⚠️ Merge3 error ({e1.name},{e2.name},{e3.name}): {e}")
+            if improved:
+                break
+
+    return best_employees

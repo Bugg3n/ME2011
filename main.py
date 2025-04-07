@@ -2,6 +2,7 @@ from Model_1 import model1
 from Model_2 import model2
 from Model_3 import model3
 from Model_3.employees import *
+from Model_4 import model4
 import os
 import calendar
 import json
@@ -21,6 +22,7 @@ DEBUG = False
 STORE_OPEN = "8:00"
 STORE_CLOSE = "22:00"
 MAX_DAILY_HOURS = 10
+TARGET_EMPLOYMENT_RATE = 0.8
 
 HOURS_PER_MONTH = {
     1: 176,
@@ -121,6 +123,11 @@ def create_schedule(web_mode=False, web_params = None):
     assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
     df_summary, staffing_summary = analyze_employees(employees=employees, assigned_shifts=assigned_shifts, unassigned_shifts=unassigned_shifts, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], total_required_hours = total_required_hours)
     export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date, df_summary, staffing_summary)
+
+    print(model4.calculate_minimum_staffing(monthly_schedule, HOURS_PER_MONTH[MONTH], target_employment_rate=TARGET_EMPLOYMENT_RATE))
+    best_employees = model4.optimize_staffing_by_merging(monthly_schedule, employees, YEAR, MONTH, last_month_schedule, HOURS_PER_MONTH[MONTH])
+    for emp in best_employees:
+        print(f"name: {emp.name}, emp_rate: {emp.employment_rate}")
 
     return assigned_shifts_by_date, unassigned_shifts, staffing_summary
 
