@@ -72,3 +72,10 @@ def calculate_average_shift_length(monthly_schedule):
         return 0.0
 
     return total_hours / total_shifts
+
+def main():
+    print("Nothing")
+
+
+if __name__ == "__main__":
+    main()

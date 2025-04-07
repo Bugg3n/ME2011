@@ -2,26 +2,25 @@ import json
 from datetime import datetime
 import pandas as pd
 
-def analyze_monthly_hours_from_employees(employees: list, schedule_json_path: str, monthly_expected_fulltime: int = 170) -> pd.DataFrame:
+def analyze_monthly_hours_from_employees(employees: list, assigned_shifts: dict, monthly_expected_fulltime: int = 170) -> pd.DataFrame:
     """
-    Analyzes how many of their expected hours each employee has fulfilled in a month.
+    Analyzes how many of their expected hours each employee has fulfilled in a month,
+    using assigned_shifts directly (not from a JSON file).
 
     Args:
         employees (list): List of Employee objects (must have .name and .employment_rate attributes).
-        schedule_json_path (str): Path to JSON file with assigned shifts (grouped by employee name).
-        monthly_expected_fulltime (int): Expected hours for a full-time employee (default = 160).
+        assigned_shifts (dict): Dictionary with employee names as keys and list of shifts as values.
+        monthly_expected_fulltime (int): Expected hours for a full-time employee (default = 170).
 
     Returns:
         pd.DataFrame: Summary with scheduled hours, expected hours, and % fulfilled.
     """
-    # Load schedule data
-    with open(schedule_json_path, "r") as f:
-        schedule = json.load(f)
     # Build lookup table for employment rates
     rate_lookup = {emp.name: emp.employment_rate for emp in employees}
+
     # Analyze each employee
     analysis = []
-    for employee_name, shifts in schedule.items():
+    for employee_name, shifts in assigned_shifts.items():
         total_hours = sum(calc_hours(shift["start"], shift["end"], shift["lunch"]) for shift in shifts)
         employment_rate = rate_lookup.get(employee_name, 1.0)
         expected_hours = employment_rate * monthly_expected_fulltime
@@ -37,59 +36,55 @@ def analyze_monthly_hours_from_employees(employees: list, schedule_json_path: st
 
     return pd.DataFrame(analysis).sort_values("% of Expected Hours", ascending=False)
 
-def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expected_fulltime=170, unassigned_shifts=None, total_required_hours=None):
+from datetime import datetime
+
+def analyze_total_staffing_balance(employees, assigned_shifts, monthly_expected_fulltime=170, unassigned_shifts=None, total_required_hours=None):
     """
-    Analyzes the total scheduled hours versus the expected staffing hours.
+    Analyzes the total scheduled hours versus the expected staffing hours using assigned_shifts directly.
 
     Args:
         employees (list of Employee): List of Employee objects.
-        schedule_json_path (str): Path to the JSON schedule file.
-        monthly_expected_fulltime (int): Expected monthly hours for full-time employees (default: 160 hours).
+        assigned_shifts (dict): Dictionary with employee names as keys and list of shifts as values.
+        monthly_expected_fulltime (int): Expected monthly hours for full-time employees (default: 170).
+        unassigned_shifts (list, optional): List of unassigned shifts.
+        total_required_hours (float, optional): Total required store coverage hours.
 
     Returns:
         dict: Summary containing total scheduled hours, expected hours, and the difference.
     """
-    
-    # Load schedule data from JSON
-    with open(schedule_json_path, 'r') as file:
-        schedule_data = json.load(file)
-
     total_scheduled_hours = 0
 
     # Calculate total scheduled hours
-    for shifts in schedule_data.values():  # Iterate over employees' schedules
+    for shifts in assigned_shifts.values():
         for shift in shifts:
             start_time = datetime.strptime(shift["start"], "%H:%M")
             end_time = datetime.strptime(shift["end"], "%H:%M")
-            shift_hours = (end_time - start_time).seconds / 3600  # Convert seconds to hours
-            
-            # Subtract lunch break if applicable
+            shift_hours = (end_time - start_time).seconds / 3600
+
             if shift["lunch"] != "None":
-                shift_hours -= 1  # Assume 1-hour lunch breaks
-            
+                shift_hours -= 1
+
             total_scheduled_hours += shift_hours
 
     # Calculate total expected hours based on employee employment rates
     total_expected_hours = sum(emp.employment_rate * monthly_expected_fulltime for emp in employees)
 
-
     # Compare the scheduled and expected hours
-    difference =  float(total_required_hours) - float(total_expected_hours)
+    difference = float(total_required_hours) - float(total_expected_hours)
     staffing_status = "Balanced"
     if difference > 0:
         staffing_status = "Understaffed"
-    elif difference < total_required_hours * 0.1:
+    elif difference < total_required_hours * -0.1:
         staffing_status = "Overstaffed"
 
     result = {
-    "total_scheduled_hours": round(total_scheduled_hours, 2),
-    "total_expected_hours": round(total_expected_hours, 2),
-    "total_required_hours": round(total_required_hours, 2),
-    "staff shortage": round(difference, 2),
-    "status": staffing_status,
-    "note": None
+        "total_scheduled_hours": round(total_scheduled_hours, 2),
+        "total_expected_hours": round(total_expected_hours, 2),
+        "total_required_hours": round(total_required_hours, 2),
+        "staff shortage": round(difference, 2),
+        "status": staffing_status,
+        "note": None
     }
-
 
     if total_required_hours is not None:
         coverage_ratio = total_scheduled_hours / total_required_hours
@@ -105,8 +100,6 @@ def analyze_total_staffing_balance(employees, schedule_json_path, monthly_expect
     if unassigned_shifts and len(unassigned_shifts) > 0:
         result["note"] = f"{len(unassigned_shifts)} shifts were unassigned due to lack of available staff."
 
-
-    # Return results as a summary dictionary
     return result
 
 # Helper function to calculate shift hours

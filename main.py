@@ -41,14 +41,11 @@ HOURS_PER_MONTH = {
 #TODO
 # Färdigställa modell 3
     # Implementera spread
-    # Fixa så chefen endast arbetar kontorstider. + Skapa en iterativ schemaläggning som lägger in chefen dagtid även om det är kvällspass som inte kan fyllas.
-
         # När vi får data från Kjell:
         # Experimentera med olika sätt att välja den bästa employeen. Probabalistiskt eller deterministiskt?
         
 
 # Städa model2. Ta bort funktioner som inte används
-# Lägg till ReadMe-fil och förklaringar för varje modul
 # Fixa model 1 när vi får data från Kjell
 
 # Model 4 - Räkna ut minsta antalet anställda och deras anställningsgrader som krävs för att driva butiken under ett år.
@@ -121,6 +118,22 @@ def create_schedule(web_mode=False, web_params = None):
         max_daily_hours = MAX_DAILY_HOURS, 
         )
     
+    assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
+    assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
+    df_summary, staffing_summary = analyze_employees(employees=employees, assigned_shifts=assigned_shifts, unassigned_shifts=unassigned_shifts, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], total_required_hours = total_required_hours)
+    export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date, df_summary, staffing_summary)
+
+    return assigned_shifts_by_date, unassigned_shifts, staffing_summary
+
+
+def analyze_employees(employees, assigned_shifts, unassigned_shifts, monthly_expected_fulltime, total_required_hours):
+    df_summary = analyze_monthly_hours_from_employees(employees = employees, assigned_shifts = assigned_shifts, monthly_expected_fulltime = monthly_expected_fulltime)
+    staffing_summary = analyze_total_staffing_balance(employees, assigned_shifts, monthly_expected_fulltime, unassigned_shifts, total_required_hours)
+    return df_summary, staffing_summary
+
+
+def export_schedule(assigned_shifts, unassigned_shifts, assigned_shifts_by_date, df_summary, staffing_summary):    
+    
     # Save final schedule
     schedule_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}.json")
     with open(schedule_filename, "w") as f:
@@ -128,18 +141,11 @@ def create_schedule(web_mode=False, web_params = None):
 
     print(f"✅ Final employee schedule saved to {schedule_filename}")
 
-    # Step 4: Transform schedule format for visualization
-    assigned_shifts_by_date = model3.transform_schedule_format(assigned_shifts, YEAR, MONTH)
-
-    assigned_shifts_by_date = inject_unassigned_into_schedule(assigned_shifts_by_date, unassigned_shifts)
 
     schedule_by_date_filename = os.path.join(SCHEDULE_FOLDER, f"final_schedule_{YEAR}_{MONTH}_by_date.json")
     with open(schedule_by_date_filename, "w") as f:
         json.dump(assigned_shifts_by_date, f, indent=4)
 
-    df_summary = analyze_monthly_hours_from_employees(employees = employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH])
-    staffing_summary = analyze_total_staffing_balance(employees, schedule_json_path = schedule_filename, monthly_expected_fulltime = HOURS_PER_MONTH[MONTH], unassigned_shifts=unassigned_shifts, total_required_hours=total_required_hours, )
-    
     summary_html = generate_employee_summary_html(df_summary)
 
     os.makedirs("HTML-files", exist_ok=True)
@@ -150,11 +156,9 @@ def create_schedule(web_mode=False, web_params = None):
     # Step 5: Visualize the final schedule
     print(f"📊 Opening schedule visualization...")
     
-    generate_html(assigned_shifts_by_date, unassigned_shifts,staffing_summary, output_path="HTML-files/monthly_schedule.html")
+    generate_html(assigned_shifts_by_date, unassigned_shifts, staffing_summary, output_path="HTML-files/monthly_schedule.html")
 
     export_schedule_to_csv(assigned_shifts, filename=f"csv-files/final_schedule_{YEAR}_{MONTH}.csv")
-
-    return assigned_shifts_by_date, unassigned_shifts, staffing_summary
 
 
 def inject_unassigned_into_schedule(assigned_by_date, unassigned_shifts):
@@ -258,7 +262,8 @@ def main():
     os.environ['WEB_MODE'] = "0"
     
     # Start server (which will now auto-open browser)
-    create_schedule()
+    monthly_schedule = create_schedule()
+
     print("Starting server at http://localhost:8000")
     print("Browser should open automatically...")
     run_server()
