@@ -42,13 +42,8 @@ HOURS_PER_MONTH = {
 
 
 #TODO
-# Färdigställa modell 3
-    # Implementera spread
-        # När vi får data från Kjell:
-        # Experimentera med olika sätt att välja den bästa employeen. Probabalistiskt eller deterministiskt?
-        
-
-# Städa model2. Ta bort funktioner som inte används
+   
+# Städa model 2. Ta bort funktioner som inte används
 # Fixa model 1 när vi får data från Kjell
 
 # Model 4 - Räkna ut minsta antalet anställda och deras anställningsgrader som krävs för att driva butiken under ett år.
