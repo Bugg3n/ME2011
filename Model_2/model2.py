@@ -5,17 +5,18 @@ import numpy as np
 import calendar
 from datetime import datetime, timedelta
 import json
+import global_state
 
 # This model is supposed to take the customer flow from model 1 and create a shift suggestion for one specific day.
 
 # Adapted Python script for Model 2 - Structured Output for Model 3
 
-OPENING_HOURS = ["08:00", "22:00"]
+
 MIN_SHIFT_HOURS = 3
 MAX_HOURS_WITHOUT_LUNCH = 5
 MAX_HOURS_PER_DAY = 8
 
-opening_hours = ["08:00", "22:00"]
+
 sales_capacity_per_hour = 12  # A salesperson can handle 12 customers per hour
 min_shift_hours = 3
 max_hours_without_lunch = 5
@@ -102,7 +103,7 @@ def construct_shifts(opening_hours, required_staffing, min_hours_per_day, max_ho
     cleaned_shifts = []
     for shift in shifts:
        
-        shift_start_time = shift.index(1) + int(opening_hours[0].split(":")[0])
+        shift_start_time = shift.index(1) + int(opening_hours[0])
         shift_end_time = shift_start_time + shift.count(1)
         lunch_time = None
         cleaned_shifts.append({"start": f"{shift_start_time}:00", "end": f"{shift_end_time}:00", "lunch": lunch_time})
@@ -159,7 +160,7 @@ def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours,
 
             for hour in middle_section:
                
-                staffing_index = hour - int(opening_hours[0].split(":")[0])
+                staffing_index = hour - int(opening_hours[0])
                 if current_staffing[staffing_index] > required_staffing[staffing_index]:  # Overstaffed hour
                     overstaffing_amount = current_staffing[staffing_index] - required_staffing[staffing_index]
                     if overstaffing_amount > max_overstaffing:
@@ -168,7 +169,7 @@ def add_lunch_breaks(shifts, required_staffing, current_staffing, opening_hours,
 
             if best_lunch_hour:
                 lunch_time = f"{best_lunch_hour}:00"
-                current_staffing[best_lunch_hour - int(opening_hours[0].split(":")[0])] -= 1
+                current_staffing[best_lunch_hour - int(opening_hours[0])] -= 1
                 lunch_times.append(best_lunch_hour)
             else:
                 
@@ -225,9 +226,9 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
     # Convert shift start/end times to hour indices for tracking
     shift_intervals = []
     for shift in shifts:
-        start_idx = int(shift["start"].split(":")[0]) - int(opening_hours[0].split(":")[0])
-        end_idx = int(shift["end"].split(":")[0]) - int(opening_hours[0].split(":")[0])
-        lunch_idx = None if shift["lunch"] == "None" else int(shift["lunch"].split(":")[0]) - int(opening_hours[0].split(":")[0])
+        start_idx = int(shift["start"].split(":")[0]) - int(opening_hours[0])
+        end_idx = int(shift["end"].split(":")[0]) - int(opening_hours[0])
+        lunch_idx = None if shift["lunch"] == "None" else int(shift["lunch"].split(":")[0]) - int(opening_hours[0])
         
         for i in range(start_idx, end_idx):
             if i != lunch_idx:  # Do not count lunch break as coverage
@@ -257,7 +258,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
                         best_option = ("extend", j)
 
             # **Option 2: Create a new shift**
-            new_shift_start = i + int(opening_hours[0].split(":")[0])
+            new_shift_start = i + int(opening_hours[0])
             new_shift_end = new_shift_start + min_hours_per_day
             new_shift = {"start": f"{new_shift_start}:00", "end": f"{new_shift_end}:00", "lunch": "None"}
 
@@ -285,7 +286,7 @@ def adjust_for_coverage(shifts, required_staffing, opening_hours, min_hours_per_
 def optimize_shift_timings(shifts, required_staffing, opening_hours,min_hours_per_day):
     
     optimized_shifts = []
-    opening_time = int(opening_hours[0].split(":")[0])
+    opening_time = int(opening_hours[0])
     current_staffing = [0] * len(required_staffing)
 
 
@@ -433,7 +434,7 @@ def generate_monthly_schedule(year, month, store_id, monthly_staffing = None,
 
         # Generate shifts for this day
         daily_shifts = construct_shifts(
-            opening_hours=OPENING_HOURS,
+            opening_hours= global_state.daily_predicted_transactions[date_str][1],
             required_staffing=staffing_per_hour,
             min_hours_per_day=min_shift_hours,
             max_hours_before_lunch=max_hours_without_lunch,

@@ -3,18 +3,20 @@ from Model_2 import model2
 from Model_3 import model3
 from Model_3.employees import *
 from Model_4 import model4
+import global_state
 import os
 import calendar
 import json
+import pandas as pd
 from visualize import generate_html, generate_employee_summary_html
 from Model_4.analyze_employees import *
 from webserver.webserver import *
 import csv
 
 
-YEAR = 2025
+YEAR = 2024
 MONTH = 2
-STORE_ID = "1"
+STORE_ID = "SE086"
 SALES_CAPACITY = 12  # Customers per employee per hour
 SCHEDULE_FOLDER = "schedules"
 CUSTOMER_FLOW_PER_HOUR = [23, 8, 8, 4, 8, 8, 35, 40, 38, 32, 25, 13, 15, 10]
@@ -54,14 +56,16 @@ HOURS_PER_MONTH = {
 
 
 #get data from kjell
-def get_data():
-    return 0
+def get_data(xlsheet_path = False): 
+    #pip install openpyxl
+    xls = pd.ExcelFile("data/transaction_data_1.xlsx")
+    df1 = pd.read_excel("data/transaction_data_1.xlsx", sheet_name="S1")
+    df2 = pd.read_excel("data/transaction_data_1.xlsx", sheet_name="S2")
+
+    return df1, df2
 
 
-#Recieves demand for the store from model1
-def get_demand():
-    demand = model1.main(CUSTOMER_FLOW_PER_HOUR, SALES_CAPACITY)
-    return 0
+
 
 def ensure_schedule_folder():
     """Ensure that the schedules folder exists."""
@@ -74,16 +78,21 @@ def create_schedule(web_mode=False, web_params = None):
     """Main function to create an optimized monthly employee schedule."""
     ensure_schedule_folder()
     sales_capacity = SALES_CAPACITY
+    #sales_capacity = SALES_CAPACITY
     if web_params:
         sales_capacity = web_params.get('sales_capacity', SALES_CAPACITY)
         average_service_time = web_params.get('average_service_time', 10)
         target_wait_time = web_params.get('target_wait_time', 5)
 
+
     print(f"📅 Getting staffing requirements from Model 1 for {calendar.month_name[MONTH]} {YEAR}...")
     
     # Step 1: Generate staffing needs (Model 1)
-    monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, sales_capacity)
 
+    
+    
+    monthly_staffing = model1.generate_monthly_staffing(YEAR, MONTH, STORE_ID, sales_capacity)
+    
 
     print(f"📊 Generating shift schedules for {calendar.month_name[MONTH]} {YEAR}...")
 
@@ -101,6 +110,8 @@ def create_schedule(web_mode=False, web_params = None):
     last_month_schedule = get_last_month_schedule(YEAR, MONTH)
 
     print(f"📅 Assigning shifts to employees for {calendar.month_name[MONTH]} {YEAR}...")
+
+    
 
     
     # Step 3: Assign shifts to employees (Model 3)
@@ -262,8 +273,14 @@ def export_schedule_to_csv(assigned_shifts, filename="final_schedule.csv"):
 
 def main():
     os.environ['WEB_MODE'] = "0"
+    transaction_data, daily_budget_hours = get_data()
+
+
+    
+    global_state.daily_predicted_transactions = model1.predict_customer_flow(transaction_data, daily_budget_hours)
     
     # Start server (which will now auto-open browser)
+    
     monthly_schedule = create_schedule()
 
     print("Starting server at http://localhost:8000")
