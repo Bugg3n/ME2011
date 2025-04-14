@@ -1,7 +1,11 @@
 import calendar
 import numpy as np
 import math
+import datetime
+import pandas as pd
 from scipy import stats
+import global_state
+
 
 def estimate_customer_flow(day_of_week): # This i going to change when we get the data. 
     """
@@ -17,6 +21,86 @@ def estimate_customer_flow(day_of_week): # This i going to change when we get th
         return [int(x * 0.8) for x in base_flow]
     else:
         return base_flow  # Normal weekday flow
+    
+
+def predict_customer_flow(df1,df2):
+    #df1:
+    #['date','hour','transactions','sales','salespt']
+
+    #df2:
+    #['date','budget_hours']
+
+    df1["date"] = pd.to_datetime(df1["date"])
+    df2["date"] = pd.to_datetime(df2["date"])
+
+    customer_flow = {}
+    
+
+    for i, row in df2.iterrows():
+        d = row["date"]
+
+        
+        try:
+            target_date = d.replace(year=2023)
+            match = df1[df1["date"].dt.date == target_date.date()]
+
+        except:
+
+            #use the previous date
+            target_date = d.replace(year=2023, day=d.day-1)
+            match = df1[df1["date"].dt.date == target_date.date()]
+
+        
+        
+        
+        
+        if not match.empty and row["budget_hours"] > 0:
+            date_key = d.strftime("%Y-%m-%d")
+
+            
+            transaction_list = match["transactions"].tolist()
+            sales_list = match["sales"].tolist()
+            hours_list = match["hour"].tolist()
+            
+            opening_time = hours_list[0]
+            closing_time = hours_list[-1] + 1
+           
+            customer_flow[date_key] = [transaction_list,[opening_time,closing_time]]
+            
+
+        elif match.empty and row["budget_hours"] > 0:
+            try:
+                fallback_date = target_date + pd.Timedelta(days=1)
+                date_key = fallback_date.strftime("%Y-%m-%d")
+                match = df1[df1["date"].dt.date == fallback_date.date()]
+                hours_list = match["hour"].tolist()
+                opening_time = hours_list[0]
+                closing_time = hours_list[-1] + 1
+                transaction_list = match["transactions"].tolist()
+                customer_flow[date_key] = [transaction_list,[opening_time,closing_time]]
+
+                
+            except:
+                pass  # in case fallback also fails
+
+            
+        else:
+            
+            date_key = d.strftime("%Y-%m-%d")
+            customer_flow[date_key] = [[0],[0,0]]
+        
+        
+    return customer_flow
+            
+            
+
+           
+
+        
+            
+            
+
+        
 
 
 def calculate_staffing(customer_flow_per_hour, sales_capacity):
@@ -27,10 +111,12 @@ def calculate_staffing(customer_flow_per_hour, sales_capacity):
     return staffing_per_hour
 
 
-def generate_monthly_staffing(year, month, store_id, sales_capacity=12,average_service_time=3.0,target_wait_time=5.0):
+def generate_monthly_staffing(year, month, store_id ,sales_capacity=12,average_service_time=3.0,target_wait_time=5.0):
     """
     Generates the required staffing per hour for each day in a given month.
     """
+    print(global_state.daily_predicted_transactions)
+    
     num_days = calendar.monthrange(year, month)[1]
     monthly_staffing = {}
 
@@ -39,8 +125,10 @@ def generate_monthly_staffing(year, month, store_id, sales_capacity=12,average_s
         day_of_week = calendar.weekday(year, month, day)
 
         # Simulate customer flow based on the day of the week
-        customer_flow_per_hour = estimate_customer_flow(day_of_week)
-
+        #customer_flow_per_hour = estimate_customer_flow(day_of_week)
+        customer_flow_per_hour =  global_state.daily_predicted_transactions[date_str][0]
+        
+        
         # Calculate staffing needs
         staffing_per_hour = calculate_staffing(customer_flow_per_hour, sales_capacity)
 
